@@ -1,87 +1,31 @@
-# Active Context: Next.js Starter Template
+# Active Context: SuperGestion
 
 ## Current State
 
-**Template Status**: ✅ Ready for development
+**Status**: ✅ V1.0 démo déployée (commit cbf68a0 poussé)
 
-The template is a clean Next.js 16 starter with TypeScript and Tailwind CSS 4. It's ready for AI-assisted expansion to build any type of application.
+Implémentation couvrant la Phase 1 (MVP POS offline) + Phase 2 (multi-tenant, transferts, achats) du PRD.
 
 ## Recently Completed
 
-- [x] Base Next.js 16 setup with App Router
-- [x] TypeScript configuration with strict mode
-- [x] Tailwind CSS 4 integration
-- [x] ESLint configuration
-- [x] Memory bank documentation
-- [x] Recipe system for common features
-
-## Current Structure
-
-| File/Directory | Purpose | Status |
-|----------------|---------|--------|
-| `src/app/page.tsx` | Home page | ✅ Ready |
-| `src/app/layout.tsx` | Root layout | ✅ Ready |
-| `src/app/globals.css` | Global styles | ✅ Ready |
-| `.kilocode/` | AI context & recipes | ✅ Ready |
+- [x] Modèle de données complet calqué sur le DDL PRD §5 (types.ts)
+- [x] Persistance par tenant (db.ts) simulant schema-per-tenant PostgreSQL, avec single-flight load + écriture atomique
+- [x] Jeu de données déterministe riche (seed.ts) : 2 tenants, 26 articles, ~576 ventes, 5 OT (tous statuts), 5 PO, lots DLC, sessions caisse ; rééquilibrage anti-stock-négatif
+- [x] Server Actions (actions.ts) : ventes idempotentes, retours (PIN admin), clôtures Z, produits CRUD, ajustements/casse, workflow OT complet, PUSH prorata, fournisseurs/PO/réception BC-BL ; audit trail partout
+- [x] Dashboard KPI + graphique CA 14 j + alertes ruptures/DLC + sessions ouvertes
+- [x] POS complet : scan, panier, kilo, paniers en attente, 4 modes de paiement + fractionné + monnaie, ticket imprimable + e-mail, mode offline avec file de sync (localStorage) + "dispo réseau"
+- [x] Stock : niveaux/états, journal mouvements, lots & DLC avec alertes J-x, emplacements virtuels In-Transit/Avarie, génération OT flux tiré
+- [x] Transferts : stepper workflow (DRAFT→…→RECEIVED/ECART), réception PDA (conformes + casse + motifs), bordereau QR simulé
+- [x] Fournisseurs : annuaire, suggestions auto, PO brouillon→envoi→réception partielle/finale avec rapprochement BC/BL
+- [x] Rapports : X/Z avec écarts, CA par magasin, top ventes 30 j, heures de pointe, modes de paiement
+- [x] Validations : typecheck/lint/build verts ; self-test E2E exécuté puis retiré (vente, idempotence, refus paiement insuffisant, retour PIN, workflow OT complet avec écarts, clôture Z)
 
 ## Current Focus
 
-The template is ready. Next steps depend on user requirements:
-
-1. What type of application to build
-2. What features are needed
-3. Design/branding preferences
-
-## Quick Start Guide
-
-### To add a new page:
-
-Create a file at `src/app/[route]/page.tsx`:
-```tsx
-export default function NewPage() {
-  return <div>New page content</div>;
-}
-```
-
-### To add components:
-
-Create `src/components/` directory and add components:
-```tsx
-// src/components/ui/Button.tsx
-export function Button({ children }: { children: React.ReactNode }) {
-  return <button className="px-4 py-2 bg-blue-600 text-white rounded">{children}</button>;
-}
-```
-
-### To add a database:
-
-Follow `.kilocode/recipes/add-database.md`
-
-### To add API routes:
-
-Create `src/app/api/[route]/route.ts`:
-```tsx
-import { NextResponse } from "next/server";
-
-export async function GET() {
-  return NextResponse.json({ message: "Hello" });
-}
-```
-
-## Available Recipes
-
-| Recipe | File | Use Case |
-|--------|------|----------|
-| Add Database | `.kilocode/recipes/add-database.md` | Data persistence with Drizzle + SQLite |
-
-## Pending Improvements
-
-- [ ] Add more recipes (auth, email, etc.)
-- [ ] Add example components
-- [ ] Add testing setup recipe
+Aucun chantier en cours. Évolutions V2.0 (PDA, IA, fidélité) non entamées.
 
 ## Session History
 
 | Date | Changes |
 |------|---------|
-| Initial | Template created with base setup |
+| 2026-10-01 | Implémentation complète SuperGestion V1.0 d'après le PRD (POS offline-first, stocks/DLC, transferts, achats, analytics, multi-tenant) |

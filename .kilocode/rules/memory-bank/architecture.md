@@ -1,120 +1,42 @@
-# System Patterns: Next.js Starter Template
+# Architecture: SuperGestion
 
-## Architecture Overview
+## Overview
 
 ```
 src/
-├── app/                    # Next.js App Router
-│   ├── layout.tsx          # Root layout + metadata
-│   ├── page.tsx            # Home page
-│   ├── globals.css         # Tailwind imports + global styles
-│   └── favicon.ico         # Site icon
-└── (expand as needed)
-    ├── components/         # React components (add when needed)
-    ├── lib/                # Utilities and helpers (add when needed)
-    └── db/                 # Database files (add via recipe)
+├── app/                      # Next.js App Router (toutes pages force-dynamic)
+│   ├── layout.tsx            # Shell : Sidebar + topbar + TenantSwitcher (résout le tenant)
+│   ├── page.tsx              # Dashboard KPI (CA, ruptures, DLC, sessions X)
+│   ├── pos/page.tsx          # POS (server) → PosClient (client, offline-first)
+│   ├── products/page.tsx     # Référentiel + ProductsClient (CRUD)
+│   ├── stock/page.tsx        # Stock/DLC/journal + StockClient
+│   ├── transfers/page.tsx    # Liste OT + TransferCreateClient
+│   ├── transfers/[id]/page.tsx  # Détail OT + TransferWorkflowClient (stepper + réception PDA)
+│   ├── suppliers/page.tsx    # Achats + PurchasesClient
+│   └── reports/page.tsx      # X/Z + SessionCloser + analytics
+├── components/               # ui.tsx (Card, Badge, StatCard, Bars, badges d'état) + clients
+└── lib/
+    ├── types.ts              # Modèle : Tenant, Store, Product, Batch, StockMovement, TransferOrder(+items), Supplier, PurchaseOrder(+items), Sale(+items/payments), CashSession, AuditEntry
+    ├── seed.ts               # Jeu de données déterministe (mulberry32) incl. rééquilibrage anti-négatif
+    ├── db.ts                 # Persistance JSON par tenant + single-flight load + mutex d'écriture
+    ├── tenant.ts             # Résolution tenant (cookie sg_tenant, défaut "horizon")
+    ├── stock.ts              # stockOf (journal dérivé), transitOf, damageOf, suggestions Pull
+    ├── format.ts             # fmtMoney/fr-FR, labels statuts & modes de paiement
+    └── actions.ts            # "use server" : toutes les mutations + audit trail (validateurs serveur)
 ```
 
-## Key Design Patterns
+## Key patterns
 
-### 1. App Router Pattern
+- **Multi-tenant « schema-per-tenant » simulé** (PRD §4.1) : `Database { tenants: Record<slug, Tenant> }` ; le tenant est résolu côté serveur (`resolveTenant()` via cookies), jamais transmis par le client. Le switcher écrit `sg_tenant` + router.refresh.
+- **Stock dérivé du journal** : `stockOf()` = somme signée des StockMovement (types IN/OUT/ajustement signé). Aucun compteur dupliqué ; invariants garantis (jamais négatif après seed ; delta absolu au μ€).
+- **Server Actions + revalidation** : `withTenant()` résout le tenant, exécute, puis `revalidateAll()` (7 routes). Les payloads de vente (prix/TVA/marge/tickets) sont recalculés serveur — le client ne fait qu'envoyer productId/qty/mode de paiement.
+- **Offline-first POS** : file `localStorage["sg_offline_sales_queue"]` (idempotence par UUID de vente — le serveur déduplique par id) + liste d'attente `sg_parked_carts`. Flush à l'événement `online` + manuel.
+- **Écritures transactionnelles simulées** : `mutateTenant` sérialise read-modify-write avec tmp+rename atomique, fallback écriture directe.
+- **Workflow OT machine à états** : SUBMIT/APPROVE/PREPARE/SHIP/RECEIVE/RESOLVE/CANCEL dans `updateTransferStatus` — écritures TRANSFER_OUT / TRANSIT_ENTRY / TRANSFER_IN / DAMAGE_TRANSIT / LOSS_TRANSIT générées par étape ; manquants = shipped−received−damaged.
 
-Uses Next.js App Router with file-based routing:
-```
-src/app/
-├── page.tsx           # Route: /
-├── about/page.tsx     # Route: /about
-├── blog/
-│   ├── page.tsx       # Route: /blog
-│   └── [slug]/page.tsx # Route: /blog/:slug
-└── api/
-    └── route.ts       # API Route: /api
-```
+## Gotchas
 
-### 2. Component Organization Pattern (When Expanding)
-
-```
-src/components/
-├── ui/                # Reusable UI components (Button, Card, etc.)
-├── layout/            # Layout components (Header, Footer)
-├── sections/          # Page sections (Hero, Features, etc.)
-└── forms/             # Form components
-```
-
-### 3. Server Components by Default
-
-All components are Server Components unless marked with `"use client"`:
-```tsx
-// Server Component (default) - can fetch data, access DB
-export default function Page() {
-  return <div>Server rendered</div>;
-}
-
-// Client Component - for interactivity
-"use client";
-export default function Counter() {
-  const [count, setCount] = useState(0);
-  return <button onClick={() => setCount(c => c + 1)}>{count}</button>;
-}
-```
-
-### 4. Layout Pattern
-
-Layouts wrap pages and can be nested:
-```tsx
-// src/app/layout.tsx - Root layout
-export default function RootLayout({ children }: { children: React.ReactNode }) {
-  return (
-    <html lang="en">
-      <body>{children}</body>
-    </html>
-  );
-}
-
-// src/app/dashboard/layout.tsx - Nested layout
-export default function DashboardLayout({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="flex">
-      <Sidebar />
-      <main>{children}</main>
-    </div>
-  );
-}
-```
-
-## Styling Conventions
-
-### Tailwind CSS Usage
-- Utility classes directly on elements
-- Component composition for repeated patterns
-- Responsive: `sm:`, `md:`, `lg:`, `xl:`
-
-### Common Patterns
-```tsx
-// Container
-<div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-
-// Responsive grid
-<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-
-// Flexbox centering
-<div className="flex items-center justify-center">
-```
-
-## File Naming Conventions
-
-- Components: PascalCase (`Button.tsx`, `Header.tsx`)
-- Utilities: camelCase (`utils.ts`, `helpers.ts`)
-- Pages/Routes: lowercase (`page.tsx`, `layout.tsx`)
-- Directories: kebab-case (`api-routes/`) or lowercase (`components/`)
-
-## State Management
-
-For simple needs:
-- `useState` for local component state
-- `useContext` for shared state
-- Server Components for data fetching
-
-For complex needs (add when necessary):
-- Zustand for client state
-- React Query for server state
+- `cookies()` dans layout → toutes pages dynamiques ; ajouter `export const dynamic = "force-dynamic"` sur chaque page.
+- Ne pas modifier `.data/` pendant que le serveur tourne avec un cache chaud (redémarrer pour recharger).
+- Le bandeau « mode retour » attend le PIN démo 1234.
+- Le stock de la graine est garanti non-négatif par une passe de rééquilibrage dans seed.ts.

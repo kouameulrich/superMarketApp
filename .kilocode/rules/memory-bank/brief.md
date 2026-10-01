@@ -1,48 +1,29 @@
-# Project Brief: Next.js Starter Template
+# Project Brief: SuperGestion
 
 ## Purpose
 
-This is a minimal Next.js starter template designed for AI-assisted development. It provides a clean foundation that can be extended to build any type of web application through interaction with an AI assistant.
+SuperGestion est une plateforme SaaS **multi-tenant** pour la grande distribution (PRD fourni par l'utilisateur, en français) : caisse POS, gestion des stocks et DLC, chaîne logistique inter-magasins (hub, transferts, In-Transit), achats fournisseurs, analytics et clôtures de caisse.
 
-## Target Users
+## Objectifs stratégiques (PRD §1.2)
 
-- Developers wanting a clean Next.js starting point
-- Users building applications through AI-assisted coding
-- Teams needing a standardized, modern Next.js setup
+- Réduire de 25 % la perte liée aux périmés/surstock
+- POS réactif (< 200 ms par scan)
+- Automatisation du réappro ([Pull] seuils) et [Push] prorata ventes
+- Étanchéité totale des données entre tenants
 
-## Core Use Case
+## Personas (PRD §2)
 
-Users describe what they want to build to an AI assistant, which then expands this template by:
+Caissier·ère (POS), Gestionnaire de stock (PDA), Responsable achats/logistique, Administrateur enseigne, Super Admin plateforme.
 
-1. Adding components and pages as needed
-2. Installing additional dependencies
-3. Setting up databases, authentication, etc. using recipes
-4. Customizing styling and branding
+## Phases
 
-## Key Requirements
-
-### Must Have
-
-- Modern Next.js 16 setup with App Router
-- TypeScript for type safety
-- Tailwind CSS 4 for styling
-- ESLint for code quality
-- Clean, minimal starting structure
-- Bun as package manager
-
-### Nice to Have
-
-- Recipe system for common additions (database, auth)
-- Memory bank for AI context persistence
-- Clear development guidelines
-
-## Success Metrics
-
-- Clean, zero-error TypeScript setup
-- Passing lint and type checks
+1. **MVP** — POS de base, référentiel articles, clôture Z, mode offline : ✅ fait
+2. **V1.0** — Multi-tenancy, transferts inter-magasins (OT/In-Transit), fournisseurs/réceptions : ✅ fait (démo)
+3. **V2.0** — PDA mobile, préparation réappro IA, fidélité, dynamic pricing : à venir
 
 ## Constraints
 
-- Minimal dependencies by default
-- Framework: Next.js 16 + React 19 + Tailwind CSS 4
-- Package manager: Bun
+- Next.js 16 + React 19 + Tailwind 4, TypeScript strict
+- Package manager **Bun** ; nunca `next dev` manuellement (le sandbox s'en charge)
+- Persistance : store JSON par tenant (`.data/supergestion.json`, gitignored) simulant le schéma-per-tenant PostgreSQL (les credentials `DB_URL`/`DB_TOKEN` de la recipe « add-database » ne sont pas provisionnés dans cet environnement)
+- Langue de l'UI : français ; devise EUR

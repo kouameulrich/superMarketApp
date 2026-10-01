@@ -1,44 +1,34 @@
-# Product Context: Next.js Starter Template
+# Product: SuperGestion
 
-## Why This Template Exists
+## User flows couverts
 
-Starting a new Next.js project involves boilerplate setup, configuration decisions, and establishing patterns. This template provides a clean, opinionated starting point that eliminates setup friction and establishes best practices from the start. It's optimized for AI-assisted development, where an AI can quickly extend the template based on user requirements.
+### Caissier (POS — /pos)
+1. Sélection magasin + caissier ; indicateur connexion (en ligne / hors ligne).
+2. Scan (champ auto-capté par lecteur USB/Bluetooth, Enter) ou recherche ; bouton « Simuler scan ».
+3. Panier : quantités (±, saisie), articles au kilo (pas 0,1), stock insuffisant → lien « dispo réseau » (quantités par magasin du tenant).
+4. Mise en attente / reprise de paniers (localStorage, par magasin).
+5. Encaissement modal : 4 modes (Espèces, CB, Mobile Money, Bon d'achat), règlements fractionnés, montants rapides, monnaie calculée.
+6. Ticket : impression ESC/POS-like (CSS print `#printable-ticket`), envoi e-mail (mailto), idempotence si hors ligne (`offline: !online`), file de synchronisation automatique à la reconnexion.
+7. Mode retour : n° ticket + PIN admin « 1234 » (démo) → RETURN_IN + audit.
 
-## Problems It Solves
+### Gestionnaire stock (/stock)
+Niveaux par magasin (états OK/Bas/Critique/Rupture), ajustements (+/−), casse/perte, journal des mouvements, lots & DLC avec alertes J-x, emplacements virtuels In-Transit/Avarie, génération d'OT automatique « flux tiré ».
 
-1. **Setup Time**: Eliminates boilerplate configuration (TypeScript, Tailwind, ESLint)
-2. **Decision Fatigue**: Pre-made choices for tooling and patterns
-3. **AI Context**: Memory bank provides persistent context for AI assistants
-4. **Extensibility**: Recipe system for adding common features
-5. **Consistency**: Standardized project structure and conventions
+### Responsable logistique (/transfers)
+Création OT (manuel/Brush PULL/PUSH), stepper workflow DRAFT→…→RECEIVED, réception PDA avec saisie conforme + casse + motif, imputation des écarts, bordereau QR simulé.
 
-## How It Should Work (User Flow)
+### Achats (/suppliers)
+Annuaire, suggestions automatiques (hub sous seuil), PO DRAFT→SENT→(PARTIAL)→RECEIVED, réception avec rapprochement BC/BL, mouvements SUPPLIER_IN auto.
 
-1. User starts with this template
-2. User describes what they want to build to AI assistant
-3. AI adds pages, components, and features as needed
-4. AI uses recipes for common additions (database, auth)
-5. User previews changes via hot reload
-6. Iterate until satisfied
-7. Deploy
+### Admin (/ , /reports)
+KPI temps réel, CA 14 j, alertes ruptures & DLC, rapports X (session ouverte) et Z (écarts comptage), top ventes 30 j, heures de pointe, modes de paiement.
 
-## Key User Experience Goals
+## UX goals
 
-- **Zero to Feature Fast**: Get building immediately, no setup required
-- **AI-Friendly**: Memory bank and recipes make AI assistance effective
-- **Flexible Foundation**: Can become any type of application
-- **Best Practices Built-In**: TypeScript strict mode, ESLint, clean structure
+- Thème sombre professionel, densité d'information élevée mais hiérarchisée (cards, badges d'état partout)
+- POS prioritaire : gros chiffres, zéro navigation, tout au clavier
+- Traçabilité : chaque écriture affichée avec référence de document
 
-## What This Template Provides
+## Jeu de données de démo
 
-1. **Clean App Structure**: Single page ready for expansion
-2. **Type Safety**: Full TypeScript setup with strict mode
-3. **Modern Styling**: Tailwind CSS 4 ready to use
-4. **Code Quality**: ESLint configured
-5. **Extensibility**: Recipe system for common features
-
-## Integration Points
-
-- **Database**: Use add-database recipe for Drizzle + SQLite
-- **Styling**: Tailwind CSS pre-configured
-- **AI Assistance**: Memory bank for context persistence
+2 tenants (NovaMarket « horizon » 4 sites ; EcoMarché « ecomarche » 2 sites), 26 produits (2 au kilo), ~576 ventes/14 j, 5 OT (un par statut), 5 PO, lots DLC (certains périmés), sessions de caisse closes + une ouverte.
