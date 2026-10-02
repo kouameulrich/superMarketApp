@@ -170,6 +170,13 @@ export function createFakeRunner(store: FakeStore = {}): FakeRunner {
       return [];
     }
 
+    // DELETE FROM dbo.T WHERE slug = @slug (métadonnées de sonde)
+    const delSlug = /^DELETE FROM dbo\.(\w+) WHERE slug = @slug/.exec(sql);
+    if (delSlug) {
+      store[delSlug[1]] = getAll(delSlug[1]).filter((r) => String(r.slug) !== String(params.slug));
+      return [];
+    }
+
     return [];
   };
 
