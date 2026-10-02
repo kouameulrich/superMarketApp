@@ -5,11 +5,12 @@
  *
  * Valide : connexion, table sg_tenants (métadonnées + miroir), round-trip
  * écriture/lecture, schéma relationnel complet (18 tables), et round-trip
- * applicatif complet (sync diff → reconstitution du document → purge).
+ * applicatif complet (sync diff → reconstitution du document → purge),
+ * exécuté en transaction pour ne jamais laisser d'état partiel.
  */
 import { readFileSync } from "fs";
 import * as sqlStore from "../src/lib/sqlStore";
-import { loadTenantDoc, syncTenantDoc, deleteTenantRelational, type SqlRunner } from "../src/lib/sqlSync";
+import { deleteTenantRelational, loadTenantDoc, syncTenantDoc, type SqlRunner } from "../src/lib/sqlSync";
 import type { Tenant } from "../src/lib/types";
 
 const PROBE_SLUG = "__sql_probe__";
@@ -42,7 +43,10 @@ function buildProbeTenant(): Tenant {
     plan: "STARTER",
     createdAt,
     users: [{ id: `${PROBE_SLUG}-u1`, username: "probe", passwordHash: "h".repeat(64), salt: "s", displayName: "Sonde", role: "ADMIN", active: true, createdAt }],
-    stores: [{ id: `${PROBE_SLUG}-s1`, code: "PRB", name: "Magasin sonde", isHub: false, address: "1 rue Test", city: "Testville" }],
+    stores: [
+      { id: `${PROBE_SLUG}-s1`, code: "PRB", name: "Magasin sonde", isHub: false, address: "1 rue Test", city: "Testville" },
+      { id: `${PROBE_SLUG}-s2`, code: "PR2", name: "Magasin sonde 2", isHub: false, address: "2 rue Test", city: "Testville" },
+    ],
     suppliers: [{ id: `${PROBE_SLUG}-f1`, code: "F-PRB", name: "Fournisseur sonde", email: "probe@test.tld", phone: "000", leadTimeDays: 2, paymentTerms: "Comptant" }],
     products: [{
       id: `${PROBE_SLUG}-p1`, sku: "PRB-1", barcode: "0000000000000", name: "Article sonde", category: "Test", brand: "Probe",
@@ -51,7 +55,7 @@ function buildProbeTenant(): Tenant {
     batches: [{ id: `${PROBE_SLUG}-b1`, productId: `${PROBE_SLUG}-p1`, storeId: `${PROBE_SLUG}-s1`, batchNumber: "LOT-PRB", dlc: "2027-01-01", quantity: 10 }],
     stockMovements: [{ id: `${PROBE_SLUG}-m1`, storeId: `${PROBE_SLUG}-s1`, productId: `${PROBE_SLUG}-p1`, type: "SUPPLIER_IN", quantity: 10, reference: "PRB-1", note: "sonde", createdBy: "sql:check", createdAt }],
     transferOrders: [{
-      id: `${PROBE_SLUG}-t1`, codeReference: "OT-PRB-1", sourceStoreId: `${PROBE_SLUG}-s1`, destinationStoreId: `${PROBE_SLUG}-s1`,
+      id: `${PROBE_SLUG}-t1`, codeReference: "OT-PRB-1", sourceStoreId: `${PROBE_SLUG}-s1`, destinationStoreId: `${PROBE_SLUG}-s2`,
       status: "DRAFT", strategy: "PULL", requestedBy: "sql:check", shippedAt: null, receivedAt: null, createdAt,
       items: [{ id: `${PROBE_SLUG}-ti1`, productId: `${PROBE_SLUG}-p1`, batchNumber: "LOT-PRB", quantityRequested: 2, quantityShipped: 0, quantityReceived: 0, quantityDamaged: 0, discrepancyReason: null }],
     }],
@@ -100,57 +104,85 @@ async function main() {
     process.exit(1);
   }
 
-  console.log("… Connexion à SQL Server");
-  await sqlStore.ensureSchema();
-  console.log("✓ Connexion OK — table dbo.sg_tenants prête");
+  try {
+    console.log("… Connexion à SQL Server");
+    await sqlStore.ensureSchema();
+    console.log("✓ Connexion OK — table dbo.sg_tenants prête");
 
-  const pool = await sqlStore.getSqlPool();
-  const run: SqlRunner = async <T>(sql: string, params?: Record<string, unknown>) => {
-    const req = pool.request();
-    for (const [k, v] of Object.entries(params ?? {})) req.input(k, v as never);
-    const res = await req.query<T>(sql);
-    return res.recordset as T[];
-  };
+    const pool = await sqlStore.getSqlPool();
+    const run: SqlRunner = async <T>(sql: string, params?: Record<string, unknown>) => {
+      const req = pool.request();
+      for (const [k, v] of Object.entries(params ?? {})) req.input(k, v as never);
+      const res = await req.query<T>(sql);
+      return res.recordset as T[];
+    };
 
-  // ── 1. Métadonnées + miroir : round-trip sur sg_tenants
-  const probe: Tenant = buildProbeTenant();
-  await sqlStore.saveTenant(probe);
-  const all = await sqlStore.loadAllTenants();
-  if (!all[PROBE_SLUG]) throw new Error("Lecture du tenant sonde impossible après upsert");
-  console.log(`✓ sg_tenants : écriture/lecture round-trip OK — ${Object.keys(all).length} tenant(s)`);
-
-  // ── 2. Schéma relationnel présent ?
-  const tbl = await run<{ n: number }>(`SELECT COUNT(*) AS n FROM sys.tables WHERE name LIKE 'sg[_]%'`);
-  const tableCount = Number(tbl[0]?.n ?? 0);
-  if (tableCount < 18) {
-    console.warn(`⚠ ${tableCount}/18 tables relationnelles présentes — exécutez sql/schema.sql (la validation relationnelle est ignorée)`);
-    await sqlStore.deleteTenant(PROBE_SLUG);
-  } else {
-    console.log(`✓ Schéma relationnel complet — ${tableCount} tables sg_*`);
-
-    // ── 3. Round-trip applicatif : sync diff → reconstitution → comparaison
-    await syncTenantDoc(run, PROBE_SLUG, null, probe);
-    const rebuilt = await loadTenantDoc(run, PROBE_SLUG);
-    if (!rebuilt) throw new Error("Reconstitution du tenant sonde impossible");
-    if (!deepEqualNormalized(rebuilt, probe)) {
-      const a = JSON.stringify(rebuilt), b = JSON.stringify(probe);
-      throw new Error(`Document reconstitué différent (longueurs ${a.length} vs ${b.length})`);
-    }
-    console.log("✓ Round-trip relationnel OK — 18 tables écrites puis reconstituées à l'identique");
-
-    // ── 4. Purge de la sonde relationnelle (la table reste vide pour le seed)
+    // Purge d'une éventuelle sonde résiduelle (échec d'une exécution antérieure)
     await deleteTenantRelational(run, PROBE_SLUG);
-    const left = await run<{ n: number }>(`SELECT COUNT(*) AS n FROM dbo.sg_tenant WHERE slug = @slug`, { slug: PROBE_SLUG });
-    if (Number(left[0]?.n ?? 0) > 0) throw new Error("Échec du nettoyage de la sonde relationnelle");
-    console.log("✓ Sonde relationnelle supprimée — état propre");
+    await sqlStore.deleteTenant(PROBE_SLUG);
+
+    // ── 1. Métadonnées + miroir : round-trip sur sg_tenants
+    const probe = buildProbeTenant();
+    await sqlStore.saveTenant(probe);
+    const all = await sqlStore.loadAllTenants();
+    if (!all[PROBE_SLUG]) throw new Error("Lecture du tenant sonde impossible après upsert");
+    console.log(`✓ sg_tenants : écriture/lecture round-trip OK — ${Object.keys(all).length} tenant(s)`);
+
+    // ── 2. Schéma relationnel présent ?
+    const tbl = await run<{ n: number }>(`SELECT COUNT(*) AS n FROM sys.tables WHERE name LIKE 'sg[_]%'`);
+    const tableCount = Number(tbl[0]?.n ?? 0);
+    if (tableCount < 18) {
+      console.warn(`⚠ ${tableCount}/18 tables relationnelles présentes — exécutez sql/schema.sql (la validation relationnelle est ignorée)`);
+    } else {
+      console.log(`✓ Schéma relationnel complet — ${tableCount} tables sg_*`);
+
+      // ── 3. Round-trip applicatif EN TRANSACTION : sync diff → reconstitution → comparaison
+      const txn = pool.transaction();
+      await txn.begin();
+      const runTx: SqlRunner = async <T>(sql: string, params?: Record<string, unknown>) => {
+        const req = txn.request();
+        for (const [k, v] of Object.entries(params ?? {})) req.input(k, v as never);
+        const res = await req.query<T>(sql);
+        return res.recordset as T[];
+      };
+      try {
+        await syncTenantDoc(runTx, PROBE_SLUG, null, probe);
+        const rebuilt = await loadTenantDoc(runTx, PROBE_SLUG);
+        if (!rebuilt) throw new Error("Reconstitution du tenant sonde impossible");
+        if (!deepEqualNormalized(rebuilt, probe)) {
+          const a = JSON.stringify(rebuilt), b = JSON.stringify(probe);
+          throw new Error(`Document reconstitué différent (longueurs ${a.length} vs ${b.length})`);
+        }
+        await txn.commit();
+        console.log("✓ Round-trip relationnel OK — 18 tables écrites puis reconstituées à l'identique");
+      } catch (e) {
+        await txn.rollback().catch(() => undefined);
+        throw e;
+      }
+    }
+
+    const versionRes = await run<{ v: string }>(`SELECT @@VERSION AS v`);
+    console.log("—", (versionRes[0]?.v.split("\n")[0] ?? "").slice(0, 120));
+    console.log("✓ SQL Server opérationnel pour SuperGestion. Lancez l'app : le seed s'injecte automatiquement si les tables sont vides.");
+  } finally {
+    // Quel que soit le résultat : aucune trace de sonde ne doit subsister
+    try {
+      const run = await sqlStore.getSqlPool().then((p) => {
+        const r: SqlRunner = async <T>(sql: string, params?: Record<string, unknown>) => {
+          const req = p.request();
+          for (const [k, v] of Object.entries(params ?? {})) req.input(k, v as never);
+          const res = await req.query<T>(sql);
+          return res.recordset as T[];
+        };
+        return r;
+      });
+      await deleteTenantRelational(run, PROBE_SLUG);
+      await sqlStore.deleteTenant(PROBE_SLUG);
+    } catch {
+      // la connexion était peut-être déjà rompue
+    }
   }
 
-  // ── 5. Nettoyage du miroir sg_tenants dans tous les cas
-  await sqlStore.deleteTenant(PROBE_SLUG);
-
-  const versionRes = await run<{ v: string }>(`SELECT @@VERSION AS v`);
-  console.log("—", (versionRes[0]?.v.split("\n")[0] ?? "").slice(0, 120));
-  console.log("✓ SQL Server opérationnel pour SuperGestion. Lancez l'app : le seed s'injecte automatiquement si les tables sont vides.");
   process.exit(0);
 }
 
