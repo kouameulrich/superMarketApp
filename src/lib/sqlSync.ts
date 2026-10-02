@@ -30,6 +30,23 @@ export type SqlParams = Record<string, unknown>;
 export type SqlRow = Record<string, unknown>;
 export type SqlRunner = <T = SqlRow>(sql: string, params?: SqlParams) => Promise<T[]>;
 
+/**
+ * Sérialise un exécuteur : une transaction mssql tient une seule connexion,
+ * ses requêtes ne peuvent pas se chevaucher (lectures parallèles incluses).
+ */
+export function serializeRunner(run: SqlRunner): SqlRunner {
+  let prev: Promise<unknown> = Promise.resolve();
+  return <T>(sql: string, params?: SqlParams): Promise<T[]> => {
+    const exec = () => run<T>(sql, params);
+    const p = prev.then(exec, exec);
+    prev = p.then(
+      () => undefined,
+      () => undefined,
+    );
+    return p;
+  };
+}
+
 const stableId = (seed: string): string => createHash("sha256").update(seed).digest("hex").slice(0, 32);
 
 // ── Définition des tables (objets du document ↔ colonnes SQL) ──────────────

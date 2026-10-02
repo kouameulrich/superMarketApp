@@ -2,9 +2,8 @@ import { promises as fs } from "fs";
 import path from "path";
 import { buildSeedDatabase, defaultUsers } from "./seed";
 import * as sqlStore from "./sqlStore";
-import { loadTenantDoc, syncTenantDoc, type SqlRunner } from "./sqlSync";
+import { loadTenantDoc, serializeRunner, syncTenantDoc, type SqlRunner } from "./sqlSync";
 import type { Database, Tenant, UUID } from "./types";
-
 /**
  * Persistance "schema-per-tenant" (PRD §4.1), deux modes :
  *
@@ -97,17 +96,17 @@ async function sqlRunner(): Promise<SqlRunner> {
   };
 }
 
-/** Transaction : exécuteur lié + commit/rollback. */
+/** Transaction : exécuteur sérialisé (une connexion) + commit/rollback. */
 async function withSqlTxn<T>(fn: (run: SqlRunner) => Promise<T>): Promise<T> {
   const pool = await sqlStore.getSqlPool();
   const txn = pool.transaction();
   await txn.begin();
-  const run: SqlRunner = async <T>(sql: string, params?: Record<string, unknown>) => {
+  const run = serializeRunner(async <T>(sql: string, params?: Record<string, unknown>) => {
     const req = txn.request();
     for (const [k, v] of Object.entries(params ?? {})) req.input(k, v as never);
     const res = await req.query<T>(sql);
     return res.recordset as T[];
-  };
+  });
   try {
     const out = await fn(run);
     await txn.commit();

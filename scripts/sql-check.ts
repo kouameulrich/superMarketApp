@@ -10,7 +10,7 @@
  */
 import { readFileSync } from "fs";
 import * as sqlStore from "../src/lib/sqlStore";
-import { deleteTenantRelational, loadTenantDoc, syncTenantDoc, type SqlRunner } from "../src/lib/sqlSync";
+import { deleteTenantRelational, loadTenantDoc, serializeRunner, syncTenantDoc, type SqlRunner } from "../src/lib/sqlSync";
 import type { Tenant } from "../src/lib/types";
 
 const PROBE_SLUG = "__sql_probe__";
@@ -139,12 +139,13 @@ async function main() {
       // ── 3. Round-trip applicatif EN TRANSACTION : sync diff → reconstitution → comparaison
       const txn = pool.transaction();
       await txn.begin();
-      const runTx: SqlRunner = async <T>(sql: string, params?: Record<string, unknown>) => {
+      const rawRun: SqlRunner = async <T>(sql: string, params?: Record<string, unknown>) => {
         const req = txn.request();
         for (const [k, v] of Object.entries(params ?? {})) req.input(k, v as never);
         const res = await req.query<T>(sql);
         return res.recordset as T[];
       };
+      const runTx = serializeRunner(rawRun);
       try {
         await syncTenantDoc(runTx, PROBE_SLUG, null, probe);
         const rebuilt = await loadTenantDoc(runTx, PROBE_SLUG);
