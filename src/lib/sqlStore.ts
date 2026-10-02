@@ -104,3 +104,10 @@ export async function saveTenant(tenant: Tenant): Promise<void> {
         INSERT INTO dbo.sg_tenants (slug, name, plan_type, payload) VALUES (@slug, @name, @plan_type, @payload)
     `);
 }
+
+export async function deleteTenant(slug: string): Promise<void> {
+  const pool = await getPool();
+  const mssql: SqlModule = await import("mssql");
+  await pool.request().input("slug", mssql.NVarChar(64), slug)
+    .query("DELETE FROM dbo.sg_tenants WHERE slug = @slug");
+}

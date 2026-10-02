@@ -41,6 +41,13 @@ async function main() {
   if (!all[PROBE_SLUG]) throw new Error("Lecture du tenant sonde impossible après upsert");
   console.log(`✓ Écriture/lecture round-trip OK — ${Object.keys(all).length} tenant(s) dans dbo.sg_tenants`);
 
+  // Nettoyage de la sonde : la table ne doit pas rester non-vide, sinon le seed de
+  // démonstration ne s'injecterait pas au démarrage de l'app.
+  await sqlStore.deleteTenant(PROBE_SLUG);
+  const after = await sqlStore.loadAllTenants();
+  if (after[PROBE_SLUG]) throw new Error("Échec du nettoyage de la sonde");
+  console.log(`✓ Sonde supprimée — état propre (${Object.keys(after).length} tenant(s) applicatif(s))`);
+
   const pool = await (async () => {
     const mssql = await import("mssql");
     const p = new mssql.ConnectionPool(sqlStore.parseConnectionString(process.env.MSSQL_CONNECTION_STRING!.trim()));
