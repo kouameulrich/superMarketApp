@@ -422,6 +422,19 @@ export function buildInsert(def: TableDef, rows: Record<string, unknown>[], slug
   return { sql, params };
 }
 
+/**
+ * Insertion en tranches : SQL Server limite chaque requête à 2 100 paramètres
+ * (au-delà : erreur 8003). Chaque tranche reste sous ~1 900 paramètres.
+ */
+export async function insertRowsChunked(run: SqlRunner, def: TableDef, rows: Record<string, unknown>[], slug: string): Promise<void> {
+  if (rows.length === 0) return;
+  const max = Math.max(1, Math.floor(1900 / Math.max(1, def.cols.length)));
+  for (let i = 0; i < rows.length; i += max) {
+    const { sql, params } = buildInsert(def, rows.slice(i, i + max), slug);
+    await run(sql, params);
+  }
+}
+
 export function buildUpdate(def: TableDef, id: string, row: Record<string, unknown>, slug: string): { sql: string; params: SqlParams } {
   const params: SqlParams = { wid: id, tslug: slug };
   let i = 0;
@@ -589,8 +602,7 @@ async function execDiff(run: SqlRunner, def: TableDef, diff: CollectionDiff, slu
     count++;
   }
   if (diff.inserts.length > 0) {
-    const { sql, params } = buildInsert(def, diff.inserts, slug);
-    await run(sql, params);
+    await insertRowsChunked(run, def, diff.inserts, slug);
     count += diff.inserts.length;
   }
   for (const u of diff.updates) {
@@ -706,8 +718,7 @@ export async function syncTenantDoc(
       if (afterSig === beforeSig) continue;
       await run(`DELETE FROM dbo.${spec.def.table} WHERE ${spec.def.parentCol} = @pid`, { pid: parent.id });
       if (parent.children.length > 0) {
-        const { sql, params } = buildInsert(spec.def, parent.children, slug);
-        await run(sql, params);
+        await insertRowsChunked(run, spec.def, parent.children, slug);
         bump(spec.def.table, parent.children.length);
       } else {
         bump(spec.def.table, 0);
@@ -732,8 +743,7 @@ export async function syncTenantDoc(
         cashSessionId: session.id,
         ticketNumber: ticket,
       }));
-      const { sql, params } = buildInsert(T_TICKET, rows, slug);
-      await run(sql, params);
+      await insertRowsChunked(run, T_TICKET, rows, slug);
       bump(T_TICKET.table, rows.length);
     }
   }

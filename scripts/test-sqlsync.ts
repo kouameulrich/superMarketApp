@@ -4,6 +4,7 @@
  */
 import {
   buildDeleteRoot,
+  insertRowsChunked,
   buildInsert,
   buildUpdate,
   diffCollection,
@@ -19,6 +20,7 @@ import {
   T_USER,
   T_CASH_SESSION,
   T_AUDIT,
+  T_MOVEMENT,
   type SqlRow, deleteTenantRelational } from "../src/lib/sqlSync";
 import type { Tenant } from "../src/lib/types";
 import { createFakeRunner } from "./fake-exec";
@@ -226,6 +228,27 @@ if (failures > 0) {
   console.error(`\n${failures} échec(s)`);
   process.exit(1);
 }
+/* ── 8. Chunking des INSERT (limite 2 100 paramètres SQL Server) ─────────── */
+console.log("8. Chunking des INSERT");
+{
+  const store: Record<string, Record<string, unknown>[] /* fake */> = {};
+  const statements: Array<{ sql: string; params: Record<string, unknown> }> = [];
+  const run = async <T = unknown>(sql: string, params?: Record<string, unknown>): Promise<T[]> => {
+    statements.push({ sql, params: params ?? {} });
+    return [] as T[];
+  };
+  const many = Array.from({ length: 200 }, (_, i) => ({
+    id: `m${i}`, storeId: "st", productId: "p", type: "SALE_POS", quantity: 1,
+    reference: `T-M1-${i}`, note: "n", createdBy: "u", createdAt: "t",
+  }));
+  await insertRowsChunked(run, T_MOVEMENT, many as unknown as Record<string, unknown>[], SLUG);
+  const perStmt = statements.map((s) => Object.keys(s.params).length);
+  check("2 tranches (200 lignes × 10 cols)", statements.length === 2 && JSON.stringify(perStmt) === JSON.stringify([1900, 100]));
+  check("sous la limite 2100", perStmt.every((n) => n <= 2100));
+  await insertRowsChunked(run, T_MOVEMENT, [], SLUG);
+  check("zéro ligne → aucune requête", statements.length === 2);
+}
+
 console.log("\nTous les tests sqlSync passent.");
 
 /* ── 7. Round-trip complet via le mini-moteur SQL (ordres émulés) ────────── */
