@@ -707,9 +707,11 @@ export async function syncTenantDoc(
     if (!changed) continue;
     await run(`DELETE FROM dbo.${T_TICKET.table} WHERE ${T_TICKET.parentCol} = @pid`, { pid: session.id });
     if (session.ticketNumbers.length > 0) {
-      const rows = session.ticketNumbers.map((ticket) =>
-        objectToRow(T_TICKET, { id: stableId(`${session.id}|${ticket}`), cashSessionId: session.id, ticketNumber: ticket }, slug),
-      );
+      const rows = session.ticketNumbers.map((ticket) => ({
+        id: stableId(`${session.id}|${ticket}`),
+        cashSessionId: session.id,
+        ticketNumber: ticket,
+      }));
       const { sql, params } = buildInsert(T_TICKET, rows, slug);
       await run(sql, params);
       bump(T_TICKET.table, rows.length);
