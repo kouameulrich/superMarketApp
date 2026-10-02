@@ -1,16 +1,36 @@
 /**
  * Vérification de la connexion SQL Server depuis le poste/le réseau de l'instance.
- * Usage : bun run sql:check
- * Requiert MSSQL_CONNECTION_STRING (voir .env.local).
+ * Usage : bun run sql:check  (ou : npx tsx scripts/sql-check.ts)
+ * Requiert MSSQL_CONNECTION_STRING : variable d'environnement ou .env.local à la racine.
  */
+import { readFileSync } from "fs";
 import * as sqlStore from "../src/lib/sqlStore";
 import type { Tenant } from "../src/lib/types";
 
 const PROBE_SLUG = "__sql_probe__";
 
+/** Charge MSSQL_CONNECTION_STRING depuis .env.local si la variable n'est pas déjà définie. */
+function loadEnvFile(): void {
+  const env = process.env.MSSQL_CONNECTION_STRING?.trim();
+  if (env) return;
+  try {
+    const content = readFileSync(".env.local", "utf8");
+    for (const line of content.split(/\r?\n/)) {
+      const m = line.match(/^\s*MSSQL_CONNECTION_STRING\s*=\s*(.+?)\s*$/);
+      if (m) {
+        process.env.MSSQL_CONNECTION_STRING = m[1].replace(/^"(.*)"$/, "$1");
+        return;
+      }
+    }
+  } catch {
+    // pas de .env.local : l'erreur claire est levée plus bas
+  }
+}
+
 async function main() {
+  loadEnvFile();
   if (!sqlStore.isSqlConfigured()) {
-    console.error("✗ MSSQL_CONNECTION_STRING n'est pas défini (créez .env.local, voir .env.local.example)");
+    console.error("✗ MSSQL_CONNECTION_STRING n'est pas défini (créez .env.local à la racine du projet, voir .env.local.example)");
     process.exit(1);
   }
 
