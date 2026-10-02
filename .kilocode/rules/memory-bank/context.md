@@ -29,7 +29,7 @@ Implémentation couvrant la Phase 1 (MVP POS offline) + Phase 2 (multi-tenant, t
 
 ## Current Focus
 
-SQL Server : migration relationnelle codée et testée hors-ligne (39 vérifications) — **restant côté utilisateur** : réexécuter `sql/drop-tables.sql` puis `sql/schema.sql` (DDL retravaillé), `bun run sql:check` (valide désormais le round-trip relationnel), démarrer l'app et vérifier l'injection du seed + un cycle vente/clôture. Ensuite : tests automatisés persistants, V2.0 (PDA, IA réappro, fidélité, dynamic pricing).
+SQL Server : migration relationnelle codée et testée hors-ligne (39 vérifications) — **restant côté utilisateur** : réexécuter `sql/drop-tables.sql` puis `sql/schema.sql` (DDL retravaillé), `bun run sql:check` (valide désormais le round-trip relationnel), démarrer l'app et vérifier l'injection du seed + un cycle vente/clôture. Outil ajouté : bun run db:seed (injection autonome + compteurs). Ensuite : tests automatisés persistants, V2.0 (PDA, IA réappro, fidélité, dynamic pricing).
 
 ## Session History
 

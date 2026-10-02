@@ -121,25 +121,34 @@ async function withSqlTxn<T>(fn: (run: SqlRunner) => Promise<T>): Promise<T> {
   }
 }
 
+/** Injection du seed SQL — complète les tenants manquants, jamais les existants. */
+export async function seedSqlDatabase(): Promise<Record<string, { tables: Record<string, number>; total: number }> | null> {
+  await sqlStore.ensureSchema();
+  const runSeed = await sqlRunner();
+  const already = new Set(
+    (await runSeed<{ slug: string }>(`SELECT slug FROM dbo.sg_tenant`)).map((r) => String(r.slug)),
+  );
+  const seed = buildSeedDatabase();
+  const reports: Record<string, { tables: Record<string, number>; total: number }> = {};
+  let didSomething = false;
+  for (const [slug, tenant] of Object.entries(seed.tenants)) {
+    if (already.has(slug)) continue; // tenant déjà en base : ne jamais écraser
+    try {
+      reports[slug] = await withSqlTxn((run) => syncTenantDoc(run, tenant.slug, null, tenant));
+      didSomething = true;
+    } catch (e) {
+      // course entre instances : le seed a déjà été injecté ailleurs
+      const msg = e instanceof Error ? e.message : String(e);
+      if (!/2627|2628|UX_sg_tenant_slug|Violation/i.test(msg)) throw e;
+    }
+  }
+  return didSomething ? reports : null;
+}
+
 /** Injection du seed au premier démarrage — ou compléter les tenants manquants (auto-réparation). */
 async function ensureSqlSeeded(): Promise<void> {
   sqlSeedPromise ??= (async () => {
-    await sqlStore.ensureSchema();
-    const run = await sqlRunner();
-    const already = new Set(
-      (await run<{ slug: string }>(`SELECT slug FROM dbo.sg_tenant`)).map((r) => String(r.slug)),
-    );
-    const seed = buildSeedDatabase();
-    for (const [slug, tenant] of Object.entries(seed.tenants)) {
-      if (already.has(slug)) continue; // tenant déjà en base : ne jamais écraser
-      try {
-        await withSqlTxn((run) => syncTenantDoc(run, tenant.slug, null, tenant));
-      } catch (e) {
-        // course entre instances : le seed a déjà été injecté ailleurs
-        const msg = e instanceof Error ? e.message : String(e);
-        if (!/2627|2628|UX_sg_tenant_slug|Violation/i.test(msg)) throw e;
-      }
-    }
+    await seedSqlDatabase();
   })();
   return sqlSeedPromise;
 }
