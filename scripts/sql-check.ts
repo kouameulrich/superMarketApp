@@ -97,6 +97,27 @@ function deepEqualNormalized(a: unknown, b: unknown): boolean {
   return JSON.stringify(strip(a)) === JSON.stringify(strip(b));
 }
 
+/** Chemin de la première divergence entre deux arbres (diagnostic). */
+function firstDiffPath(a: unknown, b: unknown, path = "$"): string {
+  if (Array.isArray(a) && Array.isArray(b)) {
+    if (a.length !== b.length) return `${path}.length (${a.length} vs ${b.length})`;
+    for (let i = 0; i < a.length; i++) {
+      const r = firstDiffPath(a[i], b[i], `${path}[${i}]`);
+      if (r) return r;
+    }
+    return "";
+  }
+  if (a !== null && b !== null && typeof a === "object" && typeof b === "object") {
+    const keys = new Set([...Object.keys(a as object), ...Object.keys(b as object)]);
+    for (const k of keys) {
+      const r = firstDiffPath((a as Record<string, unknown>)[k], (b as Record<string, unknown>)[k], `${path}.${k}`);
+      if (r) return r;
+    }
+    return "";
+  }
+  return a === b || String(a) === String(b) ? "" : `${path} (${JSON.stringify(a)} vs ${JSON.stringify(b)})`;
+}
+
 async function main() {
   loadEnvFile();
   if (!sqlStore.isSqlConfigured()) {
@@ -151,8 +172,7 @@ async function main() {
         const rebuilt = await loadTenantDoc(runTx, PROBE_SLUG);
         if (!rebuilt) throw new Error("Reconstitution du tenant sonde impossible");
         if (!deepEqualNormalized(rebuilt, probe)) {
-          const a = JSON.stringify(rebuilt), b = JSON.stringify(probe);
-          throw new Error(`Document reconstitué différent (longueurs ${a.length} vs ${b.length})`);
+          throw new Error(`Document reconstitué différent : ${firstDiffPath(rebuilt, probe, "$") || "(position inconnue)"}`);
         }
         await txn.commit();
         console.log("✓ Round-trip relationnel OK — 18 tables écrites puis reconstituées à l'identique");

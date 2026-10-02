@@ -125,6 +125,7 @@ console.log("4. Reconstitution loadTenantDoc");
   check("sessions + tickets", doc.cashSessions.length === 1 && doc.cashSessions[0].ticketNumbers.includes("T-M1-1"));
   check("optionnels absents (returnedTicket)", !("returnedTicket" in doc.sales[0]));
   check("audit vide", doc.auditLog.length === 0);
+  check("discriminant tenant absent du document", !("tenant" in doc.users[0]) && !("tenant" in doc.stores[0]) && !("tenant" in doc.sales[0]));
 }
 
 /* ── 5. Orchestration syncTenantDoc (runner enregistreur) ─────────────────── */

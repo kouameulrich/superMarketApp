@@ -322,6 +322,7 @@ export const T_AUDIT: TableDef = {
 export function rowToObject(def: TableDef, row: SqlRow): Record<string, unknown> {
   const obj: Record<string, unknown> = {};
   for (const c of def.cols) {
+    if (c.col === "tenant") continue; // discriminant applicatif : absent du document
     const raw = row[c.col];
     if (raw === null || raw === undefined) {
       if (c.nullable) continue; // champ optionnel du document : omis
