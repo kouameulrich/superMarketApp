@@ -121,15 +121,17 @@ async function withSqlTxn<T>(fn: (run: SqlRunner) => Promise<T>): Promise<T> {
   }
 }
 
-/** Injection du seed au premier démarrage (tables relationnelles vides). */
+/** Injection du seed au premier démarrage — ou compléter les tenants manquants (auto-réparation). */
 async function ensureSqlSeeded(): Promise<void> {
   sqlSeedPromise ??= (async () => {
     await sqlStore.ensureSchema();
     const run = await sqlRunner();
-    const rows = await run<{ n: number }>(`SELECT COUNT(*) AS n FROM dbo.sg_tenant`);
-    if (Number(rows[0]?.n ?? 0) > 0) return;
+    const already = new Set(
+      (await run<{ slug: string }>(`SELECT slug FROM dbo.sg_tenant`)).map((r) => String(r.slug)),
+    );
     const seed = buildSeedDatabase();
-    for (const tenant of Object.values(seed.tenants)) {
+    for (const [slug, tenant] of Object.entries(seed.tenants)) {
+      if (already.has(slug)) continue; // tenant déjà en base : ne jamais écraser
       try {
         await withSqlTxn((run) => syncTenantDoc(run, tenant.slug, null, tenant));
       } catch (e) {
