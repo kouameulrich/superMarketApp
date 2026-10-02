@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
-    "sql:check": "bun run scripts/sql-check.ts"
+    "sql:check": "bun run scripts/sql-check.ts",
+    "test:sqlsync": "bun run scripts/test-sqlsync.ts"
   },
   "dependencies": {
     "mssql": "^12.7.2",

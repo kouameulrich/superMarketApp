@@ -98,6 +98,7 @@ export async function createSale(payload: SalePayload): Promise<Result & { ticke
         const p = t.products.find((x) => x.id === it.productId);
         if (!p) return fail(`Article inconnu: ${it.productId}`);
         items.push({
+          id: newId(),
           productId: p.id,
           sku: p.sku,
           name: p.name,
@@ -133,7 +134,7 @@ export async function createSale(payload: SalePayload): Promise<Result & { ticke
         storeId: payload.storeId,
         cashier: payload.cashier,
         items,
-        payments: payload.payments,
+        payments: payload.payments.map((p) => ({ ...p, id: newId() })),
         total,
         totalVat,
         totalHt,

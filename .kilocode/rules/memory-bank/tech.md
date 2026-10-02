@@ -27,11 +27,14 @@ git add -A && git commit && git push   # migrations/deploiement gérés par le s
 ## File Structure (clé)
 
 ```
-src/lib/{types,seed,db,session,tenant,stock,format,sqlStore,actions}.ts
-src/app/login/                 # page de connexion (hors shell authentifié)
+src/lib/{types,seed,db,session,tenant,stock,format,sqlStore,sqlSync,actions}.ts
+sql/{schema.sql,drop-tables.sql}   # DDL SQL Server (18 tables, idempotent) + reset
+scripts/sql-check.ts               # validation live : connexion, sg_tenants, round-trip relationnel
+scripts/test-sqlsync.ts            # tests hors-ligne couche de sync (bun run test:sqlsync)
+src/app/login/                     # page de connexion (hors shell authentifié)
 src/app/(app)/{page,pos,products,stock,transfers,suppliers,reports}/...
 src/components/ (ui.tsx, Sidebar, LoginForm, CsvButton, PosClient, ProductsClient, StockClient, TransferCreateClient, TransferWorkflowClient, PurchasesClient, SessionCloser)
-.data/supergestion.json       # persisté à chaud (gitignored, re-seedé si absent)
+.data/supergestion.json            # repli JSON (gitignored) quand SQL non configuré
 ```
 
 ## Technical Constraints

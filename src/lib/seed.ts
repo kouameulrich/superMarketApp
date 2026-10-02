@@ -141,6 +141,7 @@ export function defaultUsers(slug: string): User[] {
       displayName: d.displayName,
       role: d.role,
       active: true,
+      createdAt: NOW.toISOString(),
     };
   });
 }

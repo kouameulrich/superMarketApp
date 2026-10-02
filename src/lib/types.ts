@@ -33,6 +33,7 @@ export interface User {
   displayName: string;
   role: UserRole;
   active: boolean;
+  createdAt: string;
 }
 
 export interface Store {
@@ -169,6 +170,7 @@ export interface PurchaseOrder {
 export type PaymentMethod = "CASH" | "CARD" | "MOBILE_MONEY" | "VOUCHER";
 
 export interface SaleItem {
+  id?: UUID;
   productId: UUID;
   sku: string;
   name: string;
@@ -180,6 +182,7 @@ export interface SaleItem {
 }
 
 export interface SalePayment {
+  id?: UUID;
   method: PaymentMethod;
   amount: number;
 }

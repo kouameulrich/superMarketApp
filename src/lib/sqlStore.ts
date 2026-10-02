@@ -59,6 +59,9 @@ async function getPool(): Promise<SqlPool> {
   return poolPromise;
 }
 
+/** Pool partagé pour les transactions applicatives (db.ts / sqlSync). */
+export const getSqlPool = getPool;
+
 const SCHEMA_SQL = `
 IF OBJECT_ID(N'dbo.sg_tenants', N'U') IS NULL
 BEGIN
@@ -66,7 +69,7 @@ BEGIN
     slug        NVARCHAR(64)  NOT NULL CONSTRAINT PK_sg_tenants PRIMARY KEY,
     name        NVARCHAR(200) NOT NULL,
     plan_type   NVARCHAR(20)  NOT NULL,
-    payload     NVARCHAR(MAX) NOT NULL,
+    payload     NVARCHAR(MAX) NULL,
     updated_at  DATETIME2     NOT NULL CONSTRAINT DF_sg_tenants_updated DEFAULT (SYSUTCDATETIME())
   );
 END`;
