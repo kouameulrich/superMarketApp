@@ -63,11 +63,11 @@ const SCHEMA_SQL = `
 IF OBJECT_ID(N'dbo.sg_tenants', N'U') IS NULL
 BEGIN
   CREATE TABLE dbo.sg_tenants (
-    slug NVARCHAR(64) NOT NULL CONSTRAINT PK_sg_tenants PRIMARY KEY,
-    name NVARCHAR(200) NOT NULL,
-    plan NVARCHAR(20) NOT NULL,
-    data NVARCHAR(MAX) NOT NULL,
-    updated_at DATETIME2 NOT NULL CONSTRAINT DF_sg_tenants_updated DEFAULT (SYSUTCDATETIME())
+    slug        NVARCHAR(64)  NOT NULL CONSTRAINT PK_sg_tenants PRIMARY KEY,
+    name        NVARCHAR(200) NOT NULL,
+    plan_type   NVARCHAR(20)  NOT NULL,
+    payload     NVARCHAR(MAX) NOT NULL,
+    updated_at  DATETIME2     NOT NULL CONSTRAINT DF_sg_tenants_updated DEFAULT (SYSUTCDATETIME())
   );
 END`;
 
@@ -78,12 +78,12 @@ export async function ensureSchema(): Promise<void> {
 
 export async function loadAllTenants(): Promise<Record<string, Tenant>> {
   const pool = await getPool();
-  const res = await pool.request().query<{ slug: string; data: string }>(
-    "SELECT slug, data FROM dbo.sg_tenants",
+  const res = await pool.request().query<{ slug: string; payload: string }>(
+    "SELECT slug, payload FROM dbo.sg_tenants",
   );
   const tenants: Record<string, Tenant> = {};
   for (const row of res.recordset) {
-    tenants[row.slug] = JSON.parse(row.data) as Tenant;
+    tenants[row.slug] = JSON.parse(row.payload) as Tenant;
   }
   return tenants;
 }
@@ -95,12 +95,12 @@ export async function saveTenant(tenant: Tenant): Promise<void> {
     .request()
     .input("slug", mssql.NVarChar(64), tenant.slug)
     .input("name", mssql.NVarChar(200), tenant.name)
-    .input("plan", mssql.NVarChar(20), tenant.plan)
-    .input("data", mssql.NVarChar(mssql.MAX), JSON.stringify(tenant))
+    .input("plan_type", mssql.NVarChar(20), tenant.plan)
+    .input("payload", mssql.NVarChar(mssql.MAX), JSON.stringify(tenant))
     .query(`
       IF EXISTS (SELECT 1 FROM dbo.sg_tenants WHERE slug = @slug)
-        UPDATE dbo.sg_tenants SET name = @name, plan = @plan, data = @data, updated_at = SYSUTCDATETIME() WHERE slug = @slug
+        UPDATE dbo.sg_tenants SET name = @name, plan_type = @plan_type, payload = @payload, updated_at = SYSUTCDATETIME() WHERE slug = @slug
       ELSE
-        INSERT INTO dbo.sg_tenants (slug, name, plan, data) VALUES (@slug, @name, @plan, @data)
+        INSERT INTO dbo.sg_tenants (slug, name, plan_type, payload) VALUES (@slug, @name, @plan_type, @payload)
     `);
 }

@@ -21,8 +21,8 @@ BEGIN
   CREATE TABLE dbo.sg_tenants (
     slug        NVARCHAR(64)  NOT NULL CONSTRAINT PK_sg_tenants PRIMARY KEY,
     name        NVARCHAR(200) NOT NULL,
-    plan        NVARCHAR(20)  NOT NULL,
-    data        NVARCHAR(MAX) NOT NULL,
+    plan_type   NVARCHAR(20)  NOT NULL,
+    payload     NVARCHAR(MAX) NOT NULL,
     updated_at  DATETIME2     NOT NULL CONSTRAINT DF_sg_tenants_updated DEFAULT (SYSUTCDATETIME())
   );
 END
@@ -34,7 +34,7 @@ CREATE TABLE dbo.sg_tenant (
   id          UNIQUEIDENTIFIER NOT NULL CONSTRAINT PK_sg_tenant PRIMARY KEY,
   slug        NVARCHAR(64)     NOT NULL,
   name        NVARCHAR(200)    NOT NULL,
-  plan        NVARCHAR(20)     NOT NULL CONSTRAINT CK_sg_tenant_plan CHECK (plan IN ('STARTER','BUSINESS','ENTERPRISE')),
+  plan_type   NVARCHAR(20)     NOT NULL CONSTRAINT CK_sg_tenant_plan CHECK (plan_type IN ('STARTER','BUSINESS','ENTERPRISE')),
   created_at  DATETIME2        NOT NULL CONSTRAINT DF_sg_tenant_created DEFAULT (SYSUTCDATETIME())
 );
 GO
