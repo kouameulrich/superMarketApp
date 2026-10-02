@@ -505,17 +505,18 @@ export async function loadTenantDoc(run: SqlRunner, slug: string): Promise<Tenan
     auditLog: mapRows<AuditEntry>(T_AUDIT, audit),
   };
 
-  // Rattachement des collections enfants
+  // Rattachement des collections enfants — sans la colonne de lien parent
+  // (absente du document applicatif : elle est dérivée du parent à la relecture)
   const transferItemObjs = mapRows<never>(T_TRANSFER_ITEM, transferItems) as unknown as Array<Record<string, unknown>>;
   const byTransfer = groupBy(transferItemObjs, (it) => String(it.transferOrderId));
   for (const t of tenant.transferOrders) {
-    t.items = (byTransfer.get(t.id) ?? []).map((it) => strip(it)) as unknown as TransferOrder["items"];
+    t.items = (byTransfer.get(t.id) ?? []).map((it) => withoutKeys(it, "transferOrderId")) as unknown as TransferOrder["items"];
   }
 
   const poItemObjs = mapRows<never>(T_PO_ITEM, poItems) as unknown as Array<Record<string, unknown>>;
   const byPo = groupBy(poItemObjs, (it) => String(it.purchaseOrderId));
   for (const p of tenant.purchaseOrders) {
-    p.items = (byPo.get(p.id) ?? []).map((it) => strip(it)) as unknown as PurchaseOrder["items"];
+    p.items = (byPo.get(p.id) ?? []).map((it) => withoutKeys(it, "purchaseOrderId")) as unknown as PurchaseOrder["items"];
   }
 
   const saleItemObjs = mapRows<never>(T_SALE_ITEM, saleItems) as unknown as Array<Record<string, unknown>>;
@@ -523,8 +524,8 @@ export async function loadTenantDoc(run: SqlRunner, slug: string): Promise<Tenan
   const salePaymentObjs = mapRows<never>(T_SALE_PAYMENT, salePayments) as unknown as Array<Record<string, unknown>>;
   const byPayment = groupBy(salePaymentObjs, (it) => String(it.saleId));
   for (const s of tenant.sales) {
-    s.items = (bySale.get(s.id) ?? []).map((it) => strip(it)) as unknown as Sale["items"];
-    s.payments = (byPayment.get(s.id) ?? []).map((it) => strip(it)) as unknown as Sale["payments"];
+    s.items = (bySale.get(s.id) ?? []).map((it) => withoutKeys(it, "saleId")) as unknown as Sale["items"];
+    s.payments = (byPayment.get(s.id) ?? []).map((it) => withoutKeys(it, "saleId")) as unknown as Sale["payments"];
   }
 
   const ticketRows = mapRows<never>(T_TICKET, tickets) as unknown as Array<Record<string, unknown>>;
@@ -547,10 +548,11 @@ function groupBy<T extends Record<string, unknown>>(rows: T[], key: (r: T) => st
   return map;
 }
 
-/** Retire le marqueur interne tenant des lignes enfants avant assemblage. */
-function strip(row: Record<string, unknown>): Record<string, unknown> {
-  const { tenant: _tenant, ...rest } = row;
-  return rest;
+/** Retire des clés (liens de domaine gérés par le parent) des objets enfants assemblés. */
+function withoutKeys<T extends Record<string, unknown>>(row: T, ...keys: string[]): Record<string, unknown> {
+  const clone = { ...row };
+  for (const k of keys) delete clone[k];
+  return clone;
 }
 
 // ── Écriture : synchronisation de l'agrégat (snapshot avant / après) ───────

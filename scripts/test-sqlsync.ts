@@ -19,9 +19,10 @@ import {
   T_USER,
   T_CASH_SESSION,
   T_AUDIT,
-  type SqlRow,
-} from "../src/lib/sqlSync";
+  type SqlRow, deleteTenantRelational } from "../src/lib/sqlSync";
 import type { Tenant } from "../src/lib/types";
+import { createFakeRunner } from "./fake-exec";
+import { buildProbeTenant, deepEqualNormalized, firstDiffPath, PROBE_SLUG } from "./probe-utils";
 
 let failures = 0;
 function check(label: string, cond: boolean): void {
@@ -33,6 +34,16 @@ function check(label: string, cond: boolean): void {
 }
 
 const SLUG = "t1";
+
+/** Applique la même dérivation d'ids enfants que le serveur après synchronisation. */
+function normalizeChildIds(d: Tenant): void {
+  for (const s of d.sales) {
+    ensureChildIdsWrapper("sg_sale_item", s.id, s.items as unknown as Record<string, unknown>[], "saleitem");
+    ensureChildIdsWrapper("sg_sale_payment", s.id, s.payments as unknown as Record<string, unknown>[], "salepay");
+  }
+  for (const t of d.transferOrders) ensureChildIdsWrapper("sg_transfer_item", t.id, t.items as unknown as Record<string, unknown>[], "transfer");
+  for (const p of d.purchaseOrders) ensureChildIdsWrapper("sg_purchase_order_item", p.id, p.items as unknown as Record<string, unknown>[], "poi");
+}
 
 /* ── 1. Mapping objet ↔ ligne (nulls, types) ─────────────────────────────── */
 console.log("1. Mapping objet ↔ ligne");
@@ -210,6 +221,76 @@ console.log("6. Ids enfants synthétisés");
   ensureChildIdsWrapper("sg_sale_item", "sa2", c, "saleitem");
   check("id dépend du parent", c[0].id !== a[0].id);
 }
+
+if (failures > 0) {
+  console.error(`\n${failures} échec(s)`);
+  process.exit(1);
+}
+console.log("\nTous les tests sqlSync passent.");
+
+/* ── 7. Round-trip complet via le mini-moteur SQL (ordres émulés) ────────── */
+console.log("7. Round-trip complet (mini-moteur SQL)");
+{
+  const fe = createFakeRunner();
+  // Purge préalable façon sql:check
+  await deleteTenantRelational(fe.run, PROBE_SLUG);
+
+  // Injection de la sonde (façon sync applicatif)
+  const probe = buildProbeTenant();
+  await syncTenantDoc(fe.run, PROBE_SLUG, null, probe);
+  const rebuilt = await loadTenantDoc(fe.run, PROBE_SLUG);
+  if (!rebuilt) {
+    check("sonde reconstituée", false);
+  } else {
+    check("sonde reconstituée", true);
+    if (deepEqualNormalized(rebuilt, probe)) {
+      check("round-trip identique (ordres SQL émulés)", true);
+    } else {
+      check(`round-trip diverge : ${firstDiffPath(rebuilt, probe)}`, false);
+    }
+
+    // Mutation : produit modifié + nouvelle vente + clôture Z
+    const after: Tenant = structuredClone(probe);
+    after.products[0].sellingPrice = 1200;
+    after.sales[0].status = "RETURNED";
+    after.sales[0].returnedTicket = "T-PRB-000001";
+    // l'app insère les ventes en tête (unshift) — les plus récentes d'abord
+    after.sales.unshift({
+      id: `${PROBE_SLUG}-sa2`, ticketNumber: "T-PRB-000002", storeId: `${PROBE_SLUG}-s2`, cashier: "caisse 2",
+      items: [{ productId: `${PROBE_SLUG}-p1`, sku: "PRB-1", name: "Article sonde", quantity: 1, unitPrice: 1200, vatRate: 0.18, costPrice: 500, discount: 0 }],
+      payments: [{ method: "CASH", amount: 1200 }],
+      total: 1200, totalVat: 183.05, totalHt: 1016.95, margin: 700, change: 0, createdAt: "2026-01-01T11:00:00.000Z",
+      syncedOffline: false, status: "COMPLETED",
+    } as never);
+    after.cashSessions[0].status = "CLOSED";
+    after.cashSessions[0].closedAt = "2026-01-01T23:00:00.000Z";
+    after.cashSessions[0].countedCash = 100000;
+    after.cashSessions[0].closedBy = "gerant";
+    after.auditLog.unshift({ id: `${PROBE_SLUG}-a2`, action: "CASH_CLOSE", entity: "cash_session", entityId: `${PROBE_SLUG}-cs1`, userId: "gerant", detail: "Clôture Z", createdAt: "2026-01-01T23:00:00.000Z" });
+
+    await syncTenantDoc(fe.run, PROBE_SLUG, probe, after);
+    const rebuilt2 = await loadTenantDoc(fe.run, PROBE_SLUG);
+    // après synchro, l'état canonique = after avec les ids enfants assignés (comme en DB)
+    normalizeChildIds(after);
+    if (rebuilt2 !== null && deepEqualNormalized(rebuilt2, after)) {
+      check("mutation persistée et relue à l'identique", true);
+    } else {
+      check(`mutation diverge : ${firstDiffPath(rebuilt2 ?? {}, after)}`, false);
+    }
+    const counts = [
+      fe.countRows("sg_product"), fe.countRows("sg_sale"), fe.countRows("sg_sale_item"),
+      fe.countRows("sg_sale_payment"), fe.countRows("sg_stock_movement"), fe.countRows("sg_cash_session_ticket"),
+    ];
+    check("volumétrie (1 produit, 2 ventes, 2 lignes, 2 paiements, 2 mouvement, 1 ticket)", JSON.stringify(counts) === JSON.stringify([1, 2, 2, 2, 1, 1]));
+
+    // Purge finale
+    await deleteTenantRelational(fe.run, PROBE_SLUG);
+    console.log("  ", "après purge:", JSON.stringify(Object.fromEntries(Object.entries(fe.store).map(([t, r]) => [t, r.length]))));
+    check("purge complète", fe.countRows("sg_product") === 0 && fe.countRows("sg_sale") === 0 && fe.countRows("sg_tenant") === 0 && fe.countRows("sg_tenants") === 0);
+  }
+}
+
+
 
 if (failures > 0) {
   console.error(`\n${failures} échec(s)`);
