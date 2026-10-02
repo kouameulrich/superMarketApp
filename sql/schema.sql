@@ -336,7 +336,9 @@ IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_sg_cs_lookup' AND obje
   CREATE INDEX IX_sg_cs_lookup ON dbo.sg_cash_session (tenant, store_id, session_status);
 GO
 
-/* Rattachement tickets ↔ session (ex-ticketNumbers du modèle document) */
+/* Rattachement tickets ↔ session (ex-ticketNumbers du modèle document).
+   Le lien vers la vente est logiciel (ticket_number), sans FK : l'unicité
+   de dbo.sg_sale.ticket_number est composite (tenant + ticket_number). */
 IF OBJECT_ID(N'dbo.sg_cash_session_ticket', N'U') IS NULL
 CREATE TABLE dbo.sg_cash_session_ticket (
   id               NVARCHAR(64)  NOT NULL CONSTRAINT PK_sg_cs_ticket PRIMARY KEY,
@@ -344,12 +346,6 @@ CREATE TABLE dbo.sg_cash_session_ticket (
   ticket_number    NVARCHAR(32)  NOT NULL,
   CONSTRAINT UX_sg_cst UNIQUE (cash_session_id, ticket_number)
 );
-GO
-
-/* FK ventes ↔ sessions (post-déclaration : le ticket est émis pendant la session) */
-IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = 'FK_sg_cst_sale_ticket')
-  ALTER TABLE dbo.sg_cash_session_ticket ADD CONSTRAINT FK_sg_cst_sale_ticket
-    FOREIGN KEY (ticket_number) REFERENCES dbo.sg_sale (ticket_number);
 GO
 
 /* ── 11. Audit trail (inaltérabilité) ────────────────────────────────────── */
