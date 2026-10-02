@@ -242,7 +242,7 @@ export function PosClient({
   const goToPayment = () => {
     if (!lines.length) return;
     setPayments([]);
-    setPayAmount(totals.total.toFixed(2));
+    setPayAmount(String(Math.round(totals.total)));
     setShowPay(true);
   };
   const addPayment = () => {
@@ -602,9 +602,9 @@ export function PosClient({
             </div>
             {payMethod === "CASH" && remaining > 0 && (
               <div className="mt-2 flex flex-wrap gap-1.5">
-                {[remaining, 5, 10, 20, 50].map((v, i) => (
-                  <button key={i} onClick={() => setPayAmount(round2(v).toFixed(2))} className="rounded-md border border-slate-700 bg-slate-950 px-2.5 py-1 text-xs tabular-nums text-slate-300 hover:border-emerald-500 hover:text-emerald-300">
-                    {i === 0 ? `Exact ${fmtMoney(v)}` : `${v} €`}
+                {[remaining, 500, 1000, 2000, 5000, 10000].map((v, i) => (
+                  <button key={i} onClick={() => setPayAmount(String(Math.round(v)))} className="rounded-md border border-slate-700 bg-slate-950 px-2.5 py-1 text-xs tabular-nums text-slate-300 hover:border-emerald-500 hover:text-emerald-300">
+                    {i === 0 ? `Exact ${fmtMoney(v)}` : `${fmtNum(v)} FCFA`}
                   </button>
                 ))}
               </div>
@@ -656,7 +656,7 @@ export function PosClient({
                 {receipt.lines.map((l, i) => (
                   <div key={i} className="flex justify-between">
                     <span>{fmtNum(l.quantity, l.unit === "KG" ? 2 : 0).padEnd(2)} × {l.name.slice(0, 24)}</span>
-                    <span>{fmtMoney(l.quantity * l.unitPrice).slice(0, 8)}</span>
+                    <span>{fmtMoney(l.quantity * l.unitPrice).slice(0, 12)}</span>
                   </div>
                 ))}
               </div>

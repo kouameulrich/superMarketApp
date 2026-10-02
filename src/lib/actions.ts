@@ -137,7 +137,7 @@ export async function createSale(payload: SalePayload): Promise<Result & { ticke
           storeId: payload.storeId,
           openedAt: now,
           closedAt: null,
-          openingFloat: 150,
+          openingFloat: 100000,
           countedCash: null,
           status: "OPEN",
           closedBy: null,

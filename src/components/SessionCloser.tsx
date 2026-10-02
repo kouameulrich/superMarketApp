@@ -3,13 +3,13 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { closeCashSession } from "@/lib/actions";
-import { fmtMoney } from "@/lib/format";
+import { fmtMoney, CASH_GAP_JUSTIFICATION_THRESHOLD as GAP_JUSTIFICATION } from "@/lib/format";
 
 export function SessionCloser({ storeId, storeName, expected }: { storeId: string; storeName: string; expected: number }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [open, setOpen] = useState(false);
-  const [counted, setCounted] = useState(expected.toFixed(2));
+  const [counted, setCounted] = useState(String(Math.round(expected)));
   const [error, setError] = useState<string | null>(null);
 
   const gap = (parseFloat(counted.replace(",", ".")) || 0) - expected;
@@ -38,8 +38,8 @@ export function SessionCloser({ storeId, storeName, expected }: { storeId: strin
               inputMode="decimal"
               className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm tabular-nums outline-none focus:border-emerald-500"
             />
-            <p className={`mt-1 text-xs tabular-nums ${Math.abs(gap) > 10 ? "text-red-300" : "text-emerald-300"}`}>
-              Écart constaté : {gap > 0 ? "+" : ""}{fmtMoney(gap)} {Math.abs(gap) > 10 && "— justification requise (audit trail)"}
+            <p className={`mt-1 text-xs tabular-nums ${Math.abs(gap) > GAP_JUSTIFICATION ? "text-red-300" : "text-emerald-300"}`}>
+              Écart constaté : {gap > 0 ? "+" : ""}{fmtMoney(gap)} {Math.abs(gap) > GAP_JUSTIFICATION && "— justification requise (audit trail)"}
             </p>
             {error && <p className="text-xs text-red-300">{error}</p>}
           </div>

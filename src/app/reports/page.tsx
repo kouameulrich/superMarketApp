@@ -1,5 +1,5 @@
 import { resolveTenant } from "@/lib/tenant";
-import { fmtMoney, fmtDateTime, fmtNum, PAYMENT_LABEL } from "@/lib/format";
+import { fmtMoney, fmtDateTime, fmtNum, PAYMENT_LABEL, CASH_GAP_JUSTIFICATION_THRESHOLD } from "@/lib/format";
 import { Badge, Bars, Card, CardHeader, StatCard } from "@/components/ui";
 import { SessionCloser } from "@/components/SessionCloser";
 
@@ -92,7 +92,7 @@ export default async function ReportsPage() {
         <StatCard label="CA cumulé (14 j)" value={fmtMoney(caTotal)} sub={`${txCount} tickets · ${returns.length} retour(s)`} tone="green" />
         <StatCard label="Marge brute cumulée" value={fmtMoney(marginTotal)} sub={`${fmtNum((marginTotal / Math.max(1, caTotal)) * 100, 1)} % du CA`} tone="violet" />
         <StatCard label="Sessions de caisse" value={String(openSessions.length)} sub="ouvertes à l'instant" tone="blue" />
-        <StatCard label="Écarts de caisse" value={fmtNum(reportRows.reduce((a, r) => a + Math.abs(r.gap), 0), 2) + " €"} sub="absolu, sur sessions closes" tone={reportRows.some((r) => Math.abs(r.gap) > 10) ? "red" : "green"} />
+        <StatCard label="Écarts de caisse" value={fmtNum(reportRows.reduce((a, r) => a + Math.abs(r.gap), 0)) + " FCFA"} sub="absolu, sur sessions closes" tone={reportRows.some((r) => Math.abs(r.gap) > CASH_GAP_JUSTIFICATION_THRESHOLD) ? "red" : "green"} />
       </div>
 
       <div className="grid gap-4 xl:grid-cols-3">
@@ -179,7 +179,7 @@ export default async function ReportsPage() {
       <Card>
         <CardHeader
           title="Rapport Z — historique des clôtures"
-          subtitle="Contrôle des écarts (comptage physique vs théorique). Un écart >10 € exige une justification."
+          subtitle="Contrôle des écarts (comptage physique vs théorique). Un écart >5 000 FCFA exige une justification."
         />
         <div className="max-h-[40vh] overflow-auto">
           <table className="w-full text-sm">
@@ -203,7 +203,7 @@ export default async function ReportsPage() {
                   <td className="px-2 py-2.5 text-center tabular-nums text-slate-300">{r.tickets}</td>
                   <td className="px-2 py-2.5 text-right tabular-nums text-slate-300">{fmtMoney(r.expected)}</td>
                   <td className="px-2 py-2.5 text-right tabular-nums text-slate-200">{fmtMoney(r.counted)}</td>
-                  <td className={`px-2 py-2.5 text-right font-semibold tabular-nums ${Math.abs(r.gap) > 10 ? "text-red-300" : "text-emerald-300"}`}>
+                  <td className={`px-2 py-2.5 text-right font-semibold tabular-nums ${Math.abs(r.gap) > CASH_GAP_JUSTIFICATION_THRESHOLD ? "text-red-300" : "text-emerald-300"}`}>
                     {r.gap > 0 ? "+" : ""}{fmtMoney(r.gap)}
                   </td>
                 </tr>

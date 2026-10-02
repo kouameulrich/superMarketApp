@@ -8,6 +8,7 @@ Implémentation couvrant la Phase 1 (MVP POS offline) + Phase 2 (multi-tenant, t
 
 ## Recently Completed
 
+- [x] Migration monétaire EUR → FCFA (XOF) : `fmtMoney` affiche en FCFA sans décimales (format.ts), données seed converties à la parité fixe 1 € = 655,957 FCFA arrondie au multiple de 5 (prix/coefficients produits), fond de caisse 100 000 FCFA, coupures POS 500/1 000/2 000/5 000/10 000 FCFA, seuil d'écart de caisse 5 000 FCFA (constante partagée `CASH_GAP_JUSTIFICATION_THRESHOLD`), champs prix produit en pas de 5 FCFA
 - [x] Modèle de données complet calqué sur le DDL PRD §5 (types.ts)
 - [x] Persistance par tenant (db.ts) simulant schema-per-tenant PostgreSQL, avec single-flight load + écriture atomique
 - [x] Jeu de données déterministe riche (seed.ts) : 2 tenants, 26 articles, ~576 ventes, 5 OT (tous statuts), 5 PO, lots DLC, sessions caisse ; rééquilibrage anti-stock-négatif
@@ -28,4 +29,5 @@ Aucun chantier en cours. Évolutions V2.0 (PDA, IA, fidélité) non entamées.
 
 | Date | Changes |
 |------|---------|
+| 2026-10-02 | Migration de la devise EUR → FCFA sur toute l'app (formatage, seed, POS, caisse, rapports) |
 | 2026-10-01 | Implémentation complète SuperGestion V1.0 d'après le PRD (POS offline-first, stocks/DLC, transferts, achats, analytics, multi-tenant) |

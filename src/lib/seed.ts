@@ -36,6 +36,11 @@ const intBetween = (min: number, max: number) => Math.floor(between(min, max + 1
 const uid = (): UUID => globalThis.crypto.randomUUID();
 
 const NOW = new Date();
+
+// Parité fixe EUR → FCFA, arrondie au multiple de 5 FCFA (plus petite pièce).
+const EUR_TO_FCFA = 655.957;
+const fcfa = (eur: number): number => Math.round((eur * EUR_TO_FCFA) / 5) * 5;
+const OPENING_FLOAT_FCFA = 100000;
 const daysAgo = (d: number, h = 10, m = 0): string => {
   const dt = new Date(NOW);
   dt.setDate(dt.getDate() - d);
@@ -120,9 +125,9 @@ function buildProducts(): Product[] {
     name: p.name,
     category: p.category,
     brand: p.brand,
-    costPrice: p.cost,
+    costPrice: fcfa(p.cost),
     vatRate: p.vat,
-    sellingPrice: p.price,
+    sellingPrice: fcfa(p.price),
     unit: p.unit ?? "UNIT",
     minStockLevel: p.min,
     supplierId: SUPPLIERS[0].id,
@@ -460,7 +465,7 @@ function buildPurchaseOrders(
         productId: p.id,
         quantityOrdered: intBetween(20, 90),
         quantityReceived: 0,
-        unitCost: Math.round(p.costPrice * 100) / 100,
+        unitCost: Math.round(p.costPrice),
       };
     }),
     createdAt: daysAgo(createdDaysAgo),
@@ -539,8 +544,8 @@ function buildCashSessions(stores: Store[], sales: Sale[]): CashSession[] {
         storeId: store.id,
         openedAt: daysAgo(d, 8, 30),
         closedAt: daysAgo(d, 20, 15),
-        openingFloat: 150,
-        countedCash: Math.round((150 + expected + between(-8, 8)) * 100) / 100,
+        openingFloat: OPENING_FLOAT_FCFA,
+        countedCash: Math.round(OPENING_FLOAT_FCFA + expected + between(-4000, 4000)),
         status: "CLOSED",
         closedBy: "Clôture Z automatique",
         ticketNumbers: daySales.map((s) => s.ticketNumber),
@@ -555,7 +560,7 @@ function buildCashSessions(stores: Store[], sales: Sale[]): CashSession[] {
     storeId: m001.id,
     openedAt: daysAgo(0, 8, 30),
     closedAt: null,
-    openingFloat: 150,
+    openingFloat: OPENING_FLOAT_FCFA,
     countedCash: null,
     status: "OPEN",
     closedBy: null,

@@ -155,7 +155,7 @@ export function ProductsClient({ products, suppliers }: { products: Row[]; suppl
                   ))}
                 </select>
               </div>
-              <NumField label="Prix d'achat HT" value={form.costPrice} onChange={(v) => setForm({ ...form, costPrice: v })} step={0.01} />
+              <NumField label="Prix d'achat HT (FCFA)" value={form.costPrice} onChange={(v) => setForm({ ...form, costPrice: v })} step={5} />
               <div>
                 <label className="mb-1 block text-xs text-slate-400">Taux de TVA</label>
                 <select
@@ -169,7 +169,7 @@ export function ProductsClient({ products, suppliers }: { products: Row[]; suppl
                   <option value={0}>0 %</option>
                 </select>
               </div>
-              <NumField label="Prix de vente TTC" value={form.sellingPrice} onChange={(v) => setForm({ ...form, sellingPrice: v })} step={0.01} />
+              <NumField label="Prix de vente TTC (FCFA)" value={form.sellingPrice} onChange={(v) => setForm({ ...form, sellingPrice: v })} step={5} />
               <NumField label="Seuil de réappro" value={form.minStockLevel} onChange={(v) => setForm({ ...form, minStockLevel: v })} step={1} />
               <div>
                 <label className="mb-1 block text-xs text-slate-400">Unité de vente</label>

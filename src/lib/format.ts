@@ -1,5 +1,8 @@
 export const fmtMoney = (n: number): string =>
-  new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" }).format(n);
+  `${new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 0 }).format(Math.round(n))} FCFA`;
+
+/** Seuil d'écart de caisse au-delà duquel une justification est exigée (FCFA). */
+export const CASH_GAP_JUSTIFICATION_THRESHOLD = 5000;
 
 export const fmtNum = (n: number, digits = 0): string =>
   new Intl.NumberFormat("fr-FR", { minimumFractionDigits: digits, maximumFractionDigits: digits }).format(n);
