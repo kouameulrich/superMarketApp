@@ -9,10 +9,11 @@
 | TypeScript   | 5.9.x   | strict                                   |
 | Tailwind CSS | 4.1.x   | CSS-first config (postcss)               |
 | Bun          | -       | package manager                          |
+| mssql 12.x   | -       | SQL Server (Tedious) — persistance principale si configurée |
 | node:crypto  | -       | sessions HMAC-SHA256 + hash mots de passe |
-| —            | —       | Persistance : JSON store custom (`src/lib/db.ts`) |
+| —            | —       | Repli : store JSON par tenant (`src/lib/db.ts`) |
 
-⚠ La recipe « add-database » (Drizzle + @kilocode/app-builder-db) exige `DB_URL`/`DB_TOKEN` — non provisionnés dans cet environnement : le package GitHub ne s'installe pas non plus (ZlibError). La persistance actuelle est un store JSON par tenant (`.data/supergestion.json`), modèle calqué sur le DDL du PRD §5. Migration Drizzle redevient pertinente si les credentials sont fournis.
+⚠ Persistance **SQL Server** activée quand `MSSQL_CONNECTION_STRING` est défini (document JSON par tenant dans `dbo.sg_tenants`, upsert read-modify-write). Repli automatique sur le store JSON local (`.data/supergestion.json`) sinon — mode actuel du sandbox : aucune instance SQL Server ni Docker disponibles. Chaîne acceptée : ADO (`Server=…;Database=…;User Id=…;Password=…`) ou URL `mssql://user:pass@host:1433/db`. Types : `@types/mssql`.
 
 ## Commands
 
@@ -26,7 +27,7 @@ git add -A && git commit && git push   # migrations/deploiement gérés par le s
 ## File Structure (clé)
 
 ```
-src/lib/{types,seed,db,session,tenant,stock,format,actions}.ts
+src/lib/{types,seed,db,session,tenant,stock,format,sqlStore,actions}.ts
 src/app/login/                 # page de connexion (hors shell authentifié)
 src/app/(app)/{page,pos,products,stock,transfers,suppliers,reports}/...
 src/components/ (ui.tsx, Sidebar, LoginForm, CsvButton, PosClient, ProductsClient, StockClient, TransferCreateClient, TransferWorkflowClient, PurchasesClient, SessionCloser)

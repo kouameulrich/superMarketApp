@@ -22,7 +22,8 @@ src/
 │       ├── types.ts          # Modèle : Tenant(+users), Store, Product, Batch, StockMovement, TransferOrder(+items), Supplier, PurchaseOrder(+items), Sale(+items/payments), CashSession, AuditEntry
 │       ├── session.ts        # Session HMAC signée (cookie httpOnly sg_session), rôles
 │       ├── seed.ts           # Jeu de données déterministe + comptes de démo (defaultUsers)
-│       ├── db.ts             # Persistance JSON par tenant + single-flight load + mutex d'écriture + migration douce users
+│       ├── sqlStore.ts       # SQL Server (mssql) : dbo.sg_tenants, document JSON par tenant, upsert
+│       ├── db.ts             # Persistance : SQL Server si MSSQL_CONNECTION_STRING, sinon JSON par tenant + single-flight + mutex d'écriture + migration douce users
 │       ├── tenant.ts         # requireSession / resolveTenant (session → tenant, sinon /login)
 │       ├── stock.ts          # stockOf (journal dérivé), transitOf, damageOf, suggestions Pull
 │       ├── format.ts         # fmtMoney FCFA, seuil écart caisse, labels statuts & paiements

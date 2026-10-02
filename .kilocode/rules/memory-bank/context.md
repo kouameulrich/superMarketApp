@@ -8,6 +8,7 @@ Implémentation couvrant la Phase 1 (MVP POS offline) + Phase 2 (multi-tenant, t
 
 ## Recently Completed
 
+- [x] Persistance SQL Server (2026-10-02) : driver mssql, `dbo.sg_tenants` (document JSON par tenant, colonnes name/plan/updated_at), activation par `MSSQL_CONNECTION_STRING` (ADO ou URL mssql://), seed auto si table vide + migration douce users, repli automatique sur le store JSON local — mode live non vérifiable dans le sandbox (aucune instance SQL Server)
 - [x] Authentification & tenant sécurisés (2026-10-02) : comptes utilisateurs par tenant (sha256 salted), /login (choix enseigne + identifiants de démo affichés), session HMAC signée httpOnly 12 h, tenant+rôle dérivés de la session (cookie sg_tenant supprimé), route group (app) protégé, logout, retours POS par rôle (PIN requis seulement pour les non-admins)
 - [x] Exports CSV (2026-10-02) : rapport Z, top ventes, modes de paiement (CsvButton, séparateur « ; » + BOM UTF-8 pour Excel FR)
 - [x] Harmonisation TVA zone FCFA (2026-10-02) : grille 18 % normal / 5 % première nécessité / 0 % exonéré (seed, formule produit, page produits)
@@ -26,12 +27,13 @@ Implémentation couvrant la Phase 1 (MVP POS offline) + Phase 2 (multi-tenant, t
 
 ## Current Focus
 
-Ordre d'exécution : auth ✓ → exports CSV ✓ → PostgreSQL (bloqué : DB_URL/DB_TOKEN non provisionnés) → TVA ✓. Prochaines étapes : vraie base PostgreSQL (revenir à la recipe add-database dès credentials), tests automatisés persistants, puis V2.0 (PDA, IA réappro, fidélité, dynamic pricing).
+Ordre d'exécution : auth ✓ → exports CSV ✓ → SQL Server ✓ (couche prête, live à valider dès une instance disponible) → TVA ✓. Prochaines étapes : valider SQL Server avec une vraie chaîne de connexion (seed + vente + clôture), tests automatisés persistants, puis V2.0 (PDA, IA réappro, fidélité, dynamic pricing).
 
 ## Session History
 
 | Date | Changes |
 |------|---------|
+| 2026-10-02 (3) | Persistance SQL Server (mssql, dbo.sg_tenants) avec repli JSON local, à la demande utilisateur |
 | 2026-10-02 (2) | Auth par session signée + rôles, exports CSV rapports, grille TVA FCFA 18/5/0 %, migration douce users sur données existantes |
 | 2026-10-02 (1) | Migration de la devise EUR → FCFA sur toute l'app (formatage, seed, POS, caisse, rapports) |
 | 2026-10-01 | Implémentation complète SuperGestion V1.0 d'après le PRD (POS offline-first, stocks/DLC, transferts, achats, analytics, multi-tenant) |
