@@ -389,8 +389,11 @@ export function buildInsert(def: TableDef, rows: Record<string, unknown>[], slug
   const chunks: string[] = [];
   for (const row of rows) {
     const values = def.cols.map((c) => {
-      const v = c.col === "tenant" ? slug : normalizeCol(c.kind, row[c.key]);
-      if (v === null) return "NULL";
+      let v = c.col === "tenant" ? slug : normalizeCol(c.kind, row[c.key]);
+      if (v === null) {
+        if (c.nullable) return "NULL";
+        v = c.kind === "b" ? false : c.kind === "n" ? 0 : ""; // colonne NOT NULL sans DEFAULT applicable
+      }
       const name = `c${i++}`;
       params[name] = v;
       return `@${name}`;
@@ -683,10 +686,9 @@ export async function syncTenantDoc(
       if (afterSig === beforeSig) continue;
       await run(`DELETE FROM dbo.${spec.def.table} WHERE ${spec.def.parentCol} = @pid`, { pid: parent.id });
       if (parent.children.length > 0) {
-        const rows = parent.children.map((c) => objectToRow(spec.def, c, slug));
-        const { sql, params } = buildInsert(spec.def, rows, slug);
+        const { sql, params } = buildInsert(spec.def, parent.children, slug);
         await run(sql, params);
-        bump(spec.def.table, rows.length);
+        bump(spec.def.table, parent.children.length);
       } else {
         bump(spec.def.table, 0);
       }

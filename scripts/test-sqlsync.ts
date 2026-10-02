@@ -161,6 +161,9 @@ console.log("5. Orchestration syncTenantDoc");
   check("aucun SELECT en tête d'écriture", !statements.some((s) => s.sql.trimStart().toUpperCase().startsWith("SELECT")));
   const childInsert = statements.find((s) => s.sql.includes("INSERT INTO dbo.sg_sale_item"));
   check("ids enfants générés", childInsert !== undefined && Object.keys(childInsert.params).some((k) => k.startsWith("c") && typeof childInsert.params[k] === "string" && (childInsert.params[k] as string).length === 32));
+  check("clé parent renseignée (sale_id)", childInsert !== undefined && !childInsert.sql.includes("NULL") && Object.values(childInsert.params).includes("sa1"));
+  const ticketInsert = statements.find((s) => s.sql.includes("INSERT INTO dbo.sg_cash_session_ticket"));
+  check("clé parent ticket (cash_session_id)", ticketInsert !== undefined && !ticketInsert.sql.includes("NULL") && Object.values(ticketInsert.params).includes("cs1"));
 
   // Mutation : produit modifié, nouvelle vente, session clôturée + ticket ajouté, audit préfixé
   const after: Tenant = structuredClone(doc);
