@@ -762,12 +762,3 @@ export async function deleteTenantRelational(run: SqlRunner, slug: string): Prom
   await run(`DELETE FROM dbo.sg_tenant WHERE slug = @slug`, { slug });
   await run(`DELETE FROM dbo.sg_tenants WHERE slug = @slug`, { slug });
 }
-
-/** Sonde de débogage (scripts). */
-export function selectWhereTenantDebug(table: string, slug: string): { sql: string; params: Record<string, unknown> } {
-  const defs: Record<string, TableDef> = { sg_user: T_USER, sg_store: T_STORE, sg_sale: T_SALE };
-  const def = defs[table];
-  if (!def) return { sql: 'def inconnu: ' + table, params: {} };
-  const q = selectWhereTenant(def, slug);
-  return { sql: q.sql, params: q.params };
-}
