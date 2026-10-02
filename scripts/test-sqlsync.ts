@@ -24,6 +24,7 @@ import {
   type SqlRow, deleteTenantRelational } from "../src/lib/sqlSync";
 import type { Tenant } from "../src/lib/types";
 import { createFakeRunner } from "./fake-exec";
+import { buildSeedDatabase } from "../src/lib/seed";
 import { buildProbeTenant, deepEqualNormalized, firstDiffPath, PROBE_SLUG } from "./probe-utils";
 
 let failures = 0;
@@ -247,6 +248,26 @@ console.log("8. Chunking des INSERT");
   check("sous la limite 2100", perStmt.every((n) => n <= 2100));
   await insertRowsChunked(run, T_MOVEMENT, [], SLUG);
   check("zéro ligne → aucune requête", statements.length === 2);
+}
+
+/* ── 9. Invariants du seed vs contraintes des CHECK DDL ──────────────────── */
+console.log("9. Seed vs contraintes DDL");
+{
+  const db = buildSeedDatabase();
+  let bad = 0;
+  for (const t of Object.values(db.tenants)) {
+    for (const m of t.stockMovements) if (!(m.quantity > 0 || m.type === "INVENTORY_ADJUST")) bad++;
+    for (const b of t.batches) if (!(b.quantity > 0)) bad++;
+    for (const o of t.transferOrders) {
+      if (o.sourceStoreId === o.destinationStoreId) bad++;
+      for (const it of o.items) if (!(it.quantityRequested > 0)) bad++;
+    }
+    for (const s of t.sales) {
+      for (const it of s.items) if (!(it.quantity > 0)) bad++;
+      for (const p of s.payments) if (!(p.amount > 0)) bad++;
+    }
+  }
+  check("seed conforme aux contraintes des CHECK DDL", bad === 0);
 }
 
 console.log("\nTous les tests sqlSync passent.");

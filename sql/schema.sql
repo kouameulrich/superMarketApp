@@ -164,7 +164,8 @@ CREATE TABLE dbo.sg_stock_movement (
   product_id  NVARCHAR(64)  NOT NULL CONSTRAINT FK_sg_sm_product REFERENCES dbo.sg_product (id),
   movement_type  NVARCHAR(20) NOT NULL CONSTRAINT CK_sg_sm_type CHECK (movement_type IN
                (N'SUPPLIER_IN',N'SALE_POS',N'RETURN_IN',N'TRANSFER_OUT',N'TRANSFER_IN',N'TRANSIT_ENTRY',N'LOSS_TRANSIT',N'DAMAGE_TRANSIT',N'INVENTORY_ADJUST',N'LOSS_DAMAGE')),
-  quantity    DECIMAL(19,3) NOT NULL CONSTRAINT CK_sg_sm_qty CHECK (quantity > 0),  -- direction dérivée du type
+  quantity    DECIMAL(19,3) NOT NULL,                 -- signé pour INVENTORY_ADJUST, positif sinon
+  CONSTRAINT CK_sg_sm_qty CHECK (quantity > 0 OR movement_type = N'INVENTORY_ADJUST'),
   reference   NVARCHAR(64)  NOT NULL,
   note        NVARCHAR(500) NULL,
   created_by  NVARCHAR(100) NOT NULL,
