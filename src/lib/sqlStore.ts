@@ -74,9 +74,23 @@ BEGIN
   );
 END`;
 
+/* Dérives de schéma connues : réparation idempotente. */
+const REPAIRS_SQL = `
+/* CK_sg_sm_qty doit autoriser les ajustements d'inventaire signés (INVENTORY_ADJUST) */
+IF EXISTS (
+  SELECT 1 FROM sys.check_constraints
+  WHERE name = 'CK_sg_sm_qty' AND definition NOT LIKE '%INVENTORY_ADJUST%'
+)
+BEGIN
+  ALTER TABLE dbo.sg_stock_movement DROP CONSTRAINT CK_sg_sm_qty;
+  ALTER TABLE dbo.sg_stock_movement ADD CONSTRAINT CK_sg_sm_qty
+    CHECK (quantity > 0 OR movement_type = N'INVENTORY_ADJUST');
+END`;
+
 export async function ensureSchema(): Promise<void> {
   const pool = await getPool();
   await pool.request().query(SCHEMA_SQL);
+  await pool.request().query(REPAIRS_SQL);
 }
 
 export async function loadAllTenants(): Promise<Record<string, Tenant>> {
