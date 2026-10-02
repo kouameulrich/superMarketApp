@@ -5,6 +5,9 @@ import type { UserRole } from "./types";
 /**
  * Session applicative signée (HMAC-SHA256) : le tenant et le rôle sont TOUJOURS
  * résolus côté serveur depuis ce cookie — jamais transmis ni modifiables par le client.
+ *
+ * Le flag Secure dépend de SG_COOKIE_SECURE="true" (à activer derrière HTTPS) :
+ * en HTTP local/LAN, un cookie Secure serait ignoré par le navigateur.
  */
 export const SESSION_COOKIE = "sg_session";
 const SESSION_TTL_S = 60 * 60 * 12; // 12 h
@@ -69,7 +72,8 @@ export async function getSession(): Promise<Session | null> {
 export const sessionCookieOptions = {
   httpOnly: true,
   sameSite: "lax" as const,
-  secure: process.env.NODE_ENV === "production",
+  // Secure uniquement derrière HTTPS, sinon le navigateur ignore le cookie en HTTP local/LAN
+  secure: process.env.SG_COOKIE_SECURE === "true",
   path: "/",
   maxAge: SESSION_TTL_S,
 };

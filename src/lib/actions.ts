@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 import { getTenant, newId, mutateTenant } from "./db";
 import { requireSession } from "./tenant";
 import { getSession, SESSION_COOKIE, sessionCookieOptions, encodeSession } from "./session";
@@ -54,7 +55,7 @@ export async function login(tenantSlug: string, username: string, password: stri
     encodeSession({ tenant: t.slug, username: user.username, displayName: user.displayName, role: user.role }),
     sessionCookieOptions,
   );
-  return { ok: true };
+  redirect("/");
 }
 
 export async function logout(): Promise<void> {
