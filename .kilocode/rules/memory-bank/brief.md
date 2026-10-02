@@ -26,4 +26,4 @@ Caissier·ère (POS), Gestionnaire de stock (PDA), Responsable achats/logistique
 - Next.js 16 + React 19 + Tailwind 4, TypeScript strict
 - Package manager **Bun** ; nunca `next dev` manuellement (le sandbox s'en charge)
 - Persistance : store JSON par tenant (`.data/supergestion.json`, gitignored) simulant le schéma-per-tenant PostgreSQL (les credentials `DB_URL`/`DB_TOKEN` de la recipe « add-database » ne sont pas provisionnés dans cet environnement)
-- Langue de l'UI : français ; devise EUR
+- Langue de l'UI : français ; devise FCFA (parité seed 1 € = 655,957 FCFA, arrondie au multiple de 5)
