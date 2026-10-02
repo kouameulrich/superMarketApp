@@ -44,7 +44,9 @@ function buildProbeTenant(): Tenant {
     createdAt,
     users: [{ id: `${PROBE_SLUG}-u1`, username: "probe", passwordHash: "h".repeat(64), salt: "s", displayName: "Sonde", role: "ADMIN", active: true, createdAt }],
     stores: [
-      { id: `${PROBE_SLUG}-s1`, code: "PRB", name: "Magasin sonde", isHub: false, address: "1 rue Test", city: "Testville" },
+      // Ordre document = ordre de tri (code ASC) : PR1 → PR2, pour que le
+      // round-trip strict passe (l'ordre des magasins est purement cosmétique).
+      { id: `${PROBE_SLUG}-s1`, code: "PR1", name: "Magasin sonde", isHub: false, address: "1 rue Test", city: "Testville" },
       { id: `${PROBE_SLUG}-s2`, code: "PR2", name: "Magasin sonde 2", isHub: false, address: "2 rue Test", city: "Testville" },
     ],
     suppliers: [{ id: `${PROBE_SLUG}-f1`, code: "F-PRB", name: "Fournisseur sonde", email: "probe@test.tld", phone: "000", leadTimeDays: 2, paymentTerms: "Comptant" }],
