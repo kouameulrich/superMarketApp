@@ -1,4 +1,4 @@
-import { resolveTenant } from "@/lib/tenant";
+import { resolveTenant, guardRoles } from "@/lib/tenant";
 import { stockOf } from "@/lib/stock";
 import { fmtMoney, fmtNum } from "@/lib/format";
 import { Badge, Card, CardHeader } from "@/components/ui";
@@ -7,7 +7,8 @@ import { ProductsClient } from "@/components/ProductsClient";
 export const dynamic = "force-dynamic";
 
 export default async function ProductsPage() {
-  const { tenant } = await resolveTenant();
+  const { tenant, session } = await resolveTenant();
+  guardRoles(session.role, ["ADMIN", "SUPER_ADMIN"]);
 
   const rows = tenant.products.map((p) => ({
     ...p,

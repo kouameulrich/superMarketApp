@@ -10,7 +10,7 @@ import type { UserRole } from "./types";
  * en HTTP local/LAN, un cookie Secure serait ignoré par le navigateur.
  */
 export const SESSION_COOKIE = "sg_session";
-const SESSION_TTL_S = 60 * 60 * 12; // 12 h
+export const SESSION_TTL_S = 60 * 60 * 12; // 12 h
 const SECRET = process.env.SG_SECRET ?? "supergestion-dev-secret-change-in-prod";
 
 export interface Session {
@@ -35,6 +35,20 @@ export const ROLE_LABEL: Record<UserRole, string> = {
   ADMIN: "Administrateur",
   SUPER_ADMIN: "Super admin",
 };
+
+let secretWarningShown = false;
+
+/** Alerte (une fois par processus) si les sessions sont signées avec le secret de développement. */
+export function warnDefaultSecretOnce(): void {
+  if (secretWarningShown) return;
+  secretWarningShown = true;
+  if (!process.env.SG_SECRET) {
+    console.warn(
+      "[SuperGestion] ⚠ SG_SECRET non défini : les sessions sont signées avec le secret de développement. " +
+        "Définissez SG_SECRET dans .env.local/environnement avant un usage réel.",
+    );
+  }
+}
 
 function sign(data: string): string {
   return createHmac("sha256", SECRET).update(data).digest("base64url");

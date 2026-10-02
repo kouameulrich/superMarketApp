@@ -9,7 +9,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   const { tenant, session } = await resolveTenant();
   return (
     <>
-      <Sidebar />
+      <Sidebar role={session.role} />
       <div className="lg:pl-64">
         <header className="sticky top-0 z-20 flex items-center justify-between gap-4 border-b border-slate-800 bg-slate-950/90 px-4 py-2.5 backdrop-blur lg:px-8">
           <div className="flex items-center gap-3 overflow-x-auto text-xs text-slate-500 lg:hidden">

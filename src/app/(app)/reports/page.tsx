@@ -1,4 +1,4 @@
-import { resolveTenant } from "@/lib/tenant";
+import { resolveTenant, guardRoles } from "@/lib/tenant";
 import { fmtMoney, fmtDateTime, fmtNum, PAYMENT_LABEL, CASH_GAP_JUSTIFICATION_THRESHOLD } from "@/lib/format";
 import { Badge, Bars, Card, CardHeader, StatCard } from "@/components/ui";
 import { SessionCloser } from "@/components/SessionCloser";
@@ -7,7 +7,8 @@ import { CsvButton } from "@/components/CsvButton";
 export const dynamic = "force-dynamic";
 
 export default async function ReportsPage() {
-  const { tenant } = await resolveTenant();
+  const { tenant, session } = await resolveTenant();
+  guardRoles(session.role, ["ADMIN", "SUPER_ADMIN"]);
   const store = (id: string) => tenant.stores.find((s) => s.id === id);
 
   const completed = tenant.sales.filter((s) => s.status === "COMPLETED");

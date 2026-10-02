@@ -3,9 +3,11 @@
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { createHash } from "crypto";
 import { getTenant, newId, mutateTenant } from "./db";
 import { requireSession } from "./tenant";
 import { getSession, SESSION_COOKIE, sessionCookieOptions, encodeSession } from "./session";
+import type { Session } from "./session";
 import { hashPassword } from "./seed";
 import { replenishmentSuggestions, salesWeight } from "./stock";
 import type {
@@ -17,6 +19,8 @@ import type {
   SaleItem,
   StockMovement,
   TransferOrder,
+  User,
+  UserRole,
 } from "./types";
 
 const ADMIN_PIN = "1234"; // démo : second facteur pour les retours des caissier·ères
@@ -33,9 +37,19 @@ function revalidateAll() {
   }
 }
 
-async function withTenant<T>(fn: (slug: string) => Promise<T>): Promise<T> {
+const ROLES = {
+  any: undefined as UserRole[] | undefined,
+  stock: ["STOCK", "LOGISTICS", "ADMIN", "SUPER_ADMIN"] as UserRole[],
+  logistics: ["LOGISTICS", "ADMIN", "SUPER_ADMIN"] as UserRole[],
+  admin: ["ADMIN", "SUPER_ADMIN"] as UserRole[],
+};
+
+async function withTenant<T>(roles: UserRole[] | undefined, fn: (slug: string, session: Session) => Promise<T>): Promise<T> {
   const session = await requireSession();
-  const result = await fn(session.tenant);
+  if (roles?.length && !roles.includes(session.role)) {
+    return fail("Accès refusé : rôle requis") as unknown as T;
+  }
+  const result = await fn(session.tenant, session);
   revalidateAll();
   return result;
 }
@@ -84,7 +98,7 @@ export interface SalePayload {
 }
 
 export async function createSale(payload: SalePayload): Promise<Result & { ticketNumber?: string }> {
-  return withTenant((slug) =>
+  return withTenant(ROLES.any, (slug) =>
     mutateTenant(slug, (t): Result & { ticketNumber?: string } => {
       if (t.sales.some((s) => s.id === payload.id)) {
         const existing = t.sales.find((s) => s.id === payload.id)!;
@@ -189,7 +203,7 @@ export async function createReturn(origTicket: string, storeId: string, pin: str
   const session = await getSession();
   const adminBypass = !!session && ["ADMIN", "SUPER_ADMIN"].includes(session.role);
   if (!adminBypass && pin !== ADMIN_PIN) return fail("PIN administrateur incorrect");
-  return withTenant(async (slug) =>
+  return withTenant(ROLES.any, async (slug) =>
     mutateTenant(slug, (t) => {
       const orig = t.sales.find((s) => s.ticketNumber === origTicket && s.storeId === storeId && s.status === "COMPLETED");
       if (!orig) return fail("Ticket introuvable ou déjà remboursé");
@@ -237,7 +251,7 @@ export async function createReturn(origTicket: string, storeId: string, pin: str
 // ─── Clôtures de caisse ─────────────────────────────────────────────────────
 
 export async function closeCashSession(storeId: string, countedCash: number): Promise<Result> {
-  return withTenant(async (slug) =>
+  return withTenant(ROLES.any, async (slug) =>
     mutateTenant(slug, (t) => {
       const session = t.cashSessions.find((c) => c.storeId === storeId && c.status === "OPEN");
       if (!session) return fail("Aucune session ouverte pour ce magasin");
@@ -270,7 +284,7 @@ export interface ProductInput {
 }
 
 export async function saveProduct(input: ProductInput): Promise<Result> {
-  return withTenant(async (slug) =>
+  return withTenant(ROLES.admin, async (slug) =>
     mutateTenant(slug, (t) => {
       if (input.id) {
         const p = t.products.find((x) => x.id === input.id);
@@ -298,7 +312,7 @@ export async function saveProduct(input: ProductInput): Promise<Result> {
 // ─── Stock : ajustements & pertes ───────────────────────────────────────────
 
 export async function adjustStock(storeId: string, productId: string, delta: number, note: string): Promise<Result> {
-  return withTenant(async (slug) =>
+  return withTenant(ROLES.stock, async (slug) =>
     mutateTenant(slug, (t) => {
       const p = t.products.find((x) => x.id === productId);
       if (!p) return fail("Produit introuvable");
@@ -322,7 +336,7 @@ export async function adjustStock(storeId: string, productId: string, delta: num
 }
 
 export async function declareLoss(storeId: string, productId: string, qty: number, note: string): Promise<Result> {
-  return withTenant(async (slug) =>
+  return withTenant(ROLES.stock, async (slug) =>
     mutateTenant(slug, (t) => {
       const p = t.products.find((x) => x.id === productId);
       if (!p) return fail("Produit introuvable");
@@ -353,7 +367,7 @@ export async function createTransferOrder(
   items: { productId: string; quantity: number }[],
   asDraft: boolean,
 ): Promise<Result> {
-  return withTenant(async (slug) =>
+  return withTenant(ROLES.stock, async (slug) =>
     mutateTenant(slug, (t) => {
       if (sourceStoreId === destinationStoreId) return fail("Source et destination doivent différer");
       const cleaned = items.filter((i) => i.quantity > 0);
@@ -390,7 +404,7 @@ export async function createTransferOrder(
 
 /** Flux tiré : génère les OTs automatiquement pour les produits sous le seuil. */
 export async function autoGeneratePullOrders(storeId: string): Promise<Result & { count?: number }> {
-  return withTenant(async (slug) => {
+  return withTenant(ROLES.stock, async (slug) => {
     const t0 = await getTenant(slug);
     if (!t0) return fail("Tenant introuvable");
     const hub = t0.stores.find((s) => s.isHub);
@@ -415,7 +429,7 @@ export async function updateTransferStatus(
   action: "SUBMIT" | "APPROVE" | "PREPARE" | "SHIP" | "RECEIVE" | "RESOLVE" | "CANCEL",
   payload?: { receive?: ReceivePayload[]; note?: string },
 ): Promise<Result> {
-  return withTenant(async (slug) =>
+  return withTenant(ROLES.stock, async (slug) =>
     mutateTenant(slug, (t) => {
       const ot = t.transferOrders.find((o) => o.id === otId);
       if (!ot) return fail("OT introuvable");
@@ -497,7 +511,7 @@ export async function updateTransferStatus(
 
 /** Flux poussé : répartir le surstock du hub au prorata des ventes (30 j). */
 export async function pushDistribute(productId: string, totalQty: number): Promise<Result> {
-  return withTenant(async (slug) =>
+  return withTenant(ROLES.stock, async (slug) =>
     mutateTenant(slug, (t) => {
       const hub = t.stores.find((s) => s.isHub);
       if (!hub) return fail("Aucun hub configuré");
@@ -542,7 +556,7 @@ export async function pushDistribute(productId: string, totalQty: number): Promi
 export async function createSupplier(input: {
   code: string; name: string; email: string; phone: string; leadTimeDays: number; paymentTerms: string;
 }): Promise<Result> {
-  return withTenant(async (slug) =>
+  return withTenant(ROLES.logistics, async (slug) =>
     mutateTenant(slug, (t) => {
       if (t.suppliers.some((s) => s.code === input.code)) return fail("Code fournisseur déjà utilisé");
       t.suppliers.push({ id: newId(), ...input });
@@ -555,7 +569,7 @@ export async function createPurchaseOrder(input: {
   supplierId: string;
   items: { productId: string; quantity: number }[];
 }): Promise<Result> {
-  return withTenant(async (slug) =>
+  return withTenant(ROLES.logistics, async (slug) =>
     mutateTenant(slug, (t) => {
       const supplier = t.suppliers.find((s) => s.id === input.supplierId);
       if (!supplier) return fail("Fournisseur introuvable");
@@ -585,7 +599,7 @@ export async function createPurchaseOrder(input: {
 }
 
 export async function sendPurchaseOrder(poId: string): Promise<Result> {
-  return withTenant(async (slug) =>
+  return withTenant(ROLES.logistics, async (slug) =>
     mutateTenant(slug, (t) => {
       const po = t.purchaseOrders.find((p) => p.id === poId);
       if (!po || po.status !== "DRAFT") return fail("Commande introuvable ou déjà envoyée");
@@ -600,7 +614,7 @@ export async function receivePurchaseOrder(
   blNumber: string,
   receipts: { itemId: string; qty: number }[],
 ): Promise<Result> {
-  return withTenant(async (slug) =>
+  return withTenant(ROLES.logistics, async (slug) =>
     mutateTenant(slug, (t) => {
       const po = t.purchaseOrders.find((p) => p.id === poId);
       if (!po || !["SENT", "PARTIALLY_RECEIVED"].includes(po.status)) return fail("Commande non réceptionnable");
@@ -625,6 +639,117 @@ export async function receivePurchaseOrder(
       }
       po.status = po.items.every((i) => i.quantityReceived >= i.quantityOrdered) ? "RECEIVED" : "PARTIALLY_RECEIVED";
       t.auditLog.unshift(auditOf("PO_RECEIVE", "purchase_order", po.code, "reception", `Rapprochement ${po.code} / ${blNumber}`));
+      return { ok: true };
+    }),
+  );
+}
+
+// ─── Utilisateurs (RBAC) ────────────────────────────────────────────────────
+
+const USERNAME_RE = /^[a-z0-9][a-z0-9._-]{2,29}$/;
+const USER_ROLE_VALUES: UserRole[] = ["CASHIER", "STOCK", "LOGISTICS", "ADMIN", "SUPER_ADMIN"];
+const PASSWORD_MIN = 8;
+
+function validatePassword(pw: string): string | null {
+  if (!pw || pw.length < PASSWORD_MIN) return `Le mot de passe doit contenir au moins ${PASSWORD_MIN} caractères`;
+  return null;
+}
+
+function countActiveAdmins(users: User[]): number {
+  return users.filter((u) => u.role === "ADMIN" && u.active).length;
+}
+
+export interface UserInput {
+  id?: string;
+  username: string;
+  displayName: string;
+  role: UserRole;
+  password?: string; // requis à la création ; optionnel à la modification (inchangé si vide)
+}
+
+/** Crée ou modifie un compte utilisateur du tenant (réservé aux administrateurs). */
+export async function saveUser(input: UserInput): Promise<Result> {
+  return withTenant(ROLES.admin, async (slug, session) =>
+    mutateTenant(slug, (t) => {
+      const username = input.username.trim().toLowerCase();
+      const displayName = input.displayName.trim();
+      if (!USERNAME_RE.test(username)) return fail("Identifiant invalide : 3 à 30 caractères (minuscules, chiffres, . _ -)");
+      if (!displayName) return fail("Nom affiché requis");
+      if (!USER_ROLE_VALUES.includes(input.role)) return fail("Rôle inconnu");
+
+      if (input.id) {
+        const user = t.users.find((u) => u.id === input.id);
+        if (!user) return fail("Utilisateur introuvable");
+        if (user.username === session.username && input.role !== user.role) {
+          return fail("Impossible de modifier son propre rôle (à faire par un autre administrateur)");
+        }
+        if (user.role === "ADMIN" && input.role !== "ADMIN" && user.active && countActiveAdmins(t.users) <= 1) {
+          return fail("Impossible de retirer le dernier administrateur actif");
+        }
+        if (t.users.some((u) => u.username === username && u.id !== input.id)) return fail("Identifiant déjà utilisé");
+        if (input.password) {
+          const pwErr = validatePassword(input.password);
+          if (pwErr) return fail(pwErr);
+          user.salt = createHash("sha256").update(`${username}:${Math.floor(Math.random() * 1e15)}`).digest("hex").slice(0, 16);
+          user.passwordHash = hashPassword(input.password, user.salt);
+        }
+        user.role = input.role;
+        user.displayName = displayName;
+        t.auditLog.unshift(auditOf("USER_UPDATE", "user", username, session.username, `Fiche utilisateur modifiée : ${displayName} (${input.role})`));
+      } else {
+        if (t.users.some((u) => u.username === username)) return fail("Identifiant déjà utilisé");
+        const pwErr = validatePassword(input.password ?? "");
+        if (pwErr) return fail(pwErr);
+        const salt = createHash("sha256").update(`${username}:${Math.floor(Math.random() * 1e15)}`).digest("hex").slice(0, 16);
+        const user: User = {
+          id: newId(),
+          username,
+          passwordHash: hashPassword(input.password!, salt),
+          salt,
+          displayName,
+          role: input.role,
+          active: true,
+          createdAt: new Date().toISOString(),
+        };
+        t.users.push(user);
+        t.auditLog.unshift(auditOf("USER_CREATE", "user", username, session.username, `Nouvel utilisateur : ${displayName} (${input.role})`));
+      }
+      return { ok: true };
+    }),
+  );
+}
+
+/** Active / désactive un compte (réservé aux administrateurs). */
+export async function setUserActive(id: string, active: boolean): Promise<Result> {
+  return withTenant(ROLES.admin, async (slug, session) =>
+    mutateTenant(slug, (t) => {
+      const user = t.users.find((u) => u.id === id);
+      if (!user) return fail("Utilisateur introuvable");
+      if (user.username === session.username && !active) return fail("Impossible de désactiver son propre compte");
+      if (!active && user.role === "ADMIN" && countActiveAdmins(t.users) <= 1) {
+        return fail("Impossible de désactiver le dernier administrateur actif");
+      }
+      user.active = active;
+      t.auditLog.unshift(
+        auditOf(active ? "USER_ACTIVATE" : "USER_DEACTIVATE", "user", user.username, session.username, `Compte ${active ? "réactivé" : "désactivé"} : ${user.displayName}`),
+      );
+      return { ok: true };
+    }),
+  );
+}
+
+/** Change son propre mot de passe (origine : écran Utilisateurs, section Mon profil). */
+export async function changeOwnPassword(currentPassword: string, newPassword: string): Promise<Result> {
+  return withTenant(ROLES.any, async (slug, session) =>
+    mutateTenant(slug, (t) => {
+      const user = t.users.find((u) => u.username === session.username);
+      if (!user) return fail("Utilisateur introuvable");
+      if (hashPassword(currentPassword, user.salt) !== user.passwordHash) return fail("Mot de passe actuel incorrect");
+      const pwErr = validatePassword(newPassword);
+      if (pwErr) return fail(pwErr);
+      user.salt = createHash("sha256").update(`${user.username}:${Math.floor(Math.random() * 1e15)}`).digest("hex").slice(0, 16);
+      user.passwordHash = hashPassword(newPassword, user.salt);
+      t.auditLog.unshift(auditOf("SELF_PASSWORD", "user", user.username, session.username, "Changement de mot de passe personnel"));
       return { ok: true };
     }),
   );

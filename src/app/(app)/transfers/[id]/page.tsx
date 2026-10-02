@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { resolveTenant } from "@/lib/tenant";
+import { resolveTenant, guardRoles } from "@/lib/tenant";
 import { fmtDateTime, fmtQty, TRANSFER_STATUS_LABEL } from "@/lib/format";
 import { Card, CardHeader, TransferStatusBadge } from "@/components/ui";
 import { TransferWorkflowClient } from "@/components/TransferWorkflowClient";
@@ -18,7 +18,8 @@ const STEPS = [
 
 export default async function TransferDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const { tenant } = await resolveTenant();
+  const { tenant, session } = await resolveTenant();
+  guardRoles(session.role, ["STOCK", "LOGISTICS", "ADMIN", "SUPER_ADMIN"]);
   const ot = tenant.transferOrders.find((o) => o.id === id);
   if (!ot) notFound();
 

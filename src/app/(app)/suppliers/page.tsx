@@ -1,4 +1,4 @@
-import { resolveTenant } from "@/lib/tenant";
+import { resolveTenant, guardRoles } from "@/lib/tenant";
 import { stockRowsForStore } from "@/lib/stock";
 import { fmtDateTime, fmtMoney, fmtNum } from "@/lib/format";
 import { Card, CardHeader, POStatusBadge, StatCard } from "@/components/ui";
@@ -7,7 +7,8 @@ import { PurchasesClient } from "@/components/PurchasesClient";
 export const dynamic = "force-dynamic";
 
 export default async function SuppliersPage() {
-  const { tenant } = await resolveTenant();
+  const { tenant, session } = await resolveTenant();
+  guardRoles(session.role, ["LOGISTICS", "ADMIN", "SUPER_ADMIN"]);
   const hub = tenant.stores.find((s) => s.isHub);
 
   const suggestions = hub

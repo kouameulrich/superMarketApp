@@ -1,4 +1,4 @@
-import { resolveTenant } from "@/lib/tenant";
+import { resolveTenant, guardRoles } from "@/lib/tenant";
 import { stockRowsForStore, movementsFor, dlcDaysLeft, transitOf } from "@/lib/stock";
 import { fmtMoney, fmtDateTime, fmtQty, MOVEMENT_LABEL } from "@/lib/format";
 import { Badge, Card, CardHeader, StatCard } from "@/components/ui";
@@ -7,7 +7,8 @@ import { StockClient } from "@/components/StockClient";
 export const dynamic = "force-dynamic";
 
 export default async function StockPage() {
-  const { tenant } = await resolveTenant();
+  const { tenant, session } = await resolveTenant();
+  guardRoles(session.role, ["STOCK", "LOGISTICS", "ADMIN", "SUPER_ADMIN"]);
   const defaultStore = tenant.stores.find((s) => !s.isHub) ?? tenant.stores[0];
 
   const rows = stockRowsForStore(tenant, defaultStore.id).map((r) => ({

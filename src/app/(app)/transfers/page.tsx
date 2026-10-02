@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { resolveTenant } from "@/lib/tenant";
+import { resolveTenant, guardRoles } from "@/lib/tenant";
 import { fmtDateTime, fmtQty } from "@/lib/format";
 import { Badge, Card, CardHeader, StatCard, TransferStatusBadge } from "@/components/ui";
 import { TransferCreateClient } from "@/components/TransferCreateClient";
@@ -7,7 +7,8 @@ import { TransferCreateClient } from "@/components/TransferCreateClient";
 export const dynamic = "force-dynamic";
 
 export default async function TransfersPage() {
-  const { tenant } = await resolveTenant();
+  const { tenant, session } = await resolveTenant();
+  guardRoles(session.role, ["STOCK", "LOGISTICS", "ADMIN", "SUPER_ADMIN"]);
   const storeName = (id: string) => tenant.stores.find((s) => s.id === id)?.code ?? "?";
 
   const ots = tenant.transferOrders;

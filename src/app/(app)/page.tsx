@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { resolveTenant } from "@/lib/tenant";
+import { resolveTenant, guardRoles } from "@/lib/tenant";
 import { dlcDaysLeft, stockRowsForStore } from "@/lib/stock";
 import { fmtMoney, fmtDateTime, MOVEMENT_LABEL, fmtQty } from "@/lib/format";
 import { Badge, Bars, Card, CardHeader, StatCard } from "@/components/ui";
@@ -7,7 +7,8 @@ import { Badge, Bars, Card, CardHeader, StatCard } from "@/components/ui";
 export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
-  const { tenant } = await resolveTenant();
+  const { tenant, session } = await resolveTenant();
+  guardRoles(session.role, ["STOCK", "LOGISTICS", "ADMIN", "SUPER_ADMIN"]);
 
   const today = new Date().toISOString().slice(0, 10);
   const salesToday = tenant.sales.filter((s) => s.createdAt.slice(0, 10) === today);

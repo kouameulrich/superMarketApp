@@ -172,6 +172,32 @@ export async function getTenant(slug: string): Promise<Tenant | null> {
   return db.tenants[slug] ?? null;
 }
 
+/**
+ * Vérifie qu'un utilisateur de session existe toujours et est actif, et renvoie
+ * son état courant (rôle/deux affichages à jour). Le rôle en cookie n'est jamais
+ * la source de vérité : la désactivation est effective immédiatement.
+ */
+export async function liveUser(
+  session: { tenant: string; username: string },
+): Promise<{ slug: string; username: string; displayName: string; role: string } | null> {
+  if (sqlMode()) {
+    await ensureSqlSeeded();
+    const run = await sqlRunner();
+    const rows = await run<{ username: string; display_name: string; user_role: string }>(
+      `SELECT TOP 1 username, display_name, user_role FROM dbo.sg_user WHERE tenant = @tenant AND username = @username AND active = 1`,
+      { tenant: session.tenant, username: session.username },
+    );
+    const u = rows[0];
+    if (!u) return null;
+    return { slug: session.tenant, username: u.username, displayName: u.display_name, role: u.user_role };
+  }
+  const db = await loadFileDb();
+  const t = db.tenants[session.tenant];
+  const u = t?.users.find((x) => x.username === session.username && x.active);
+  if (!t || !u) return null;
+  return { slug: t.slug, username: u.username, displayName: u.displayName, role: u.role };
+}
+
 /** Métadonnées d'enseignes (écran de connexion). */
 export async function listTenants(): Promise<TenantMeta[]> {
   if (sqlMode()) {
