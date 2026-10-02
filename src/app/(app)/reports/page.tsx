@@ -2,6 +2,7 @@ import { resolveTenant } from "@/lib/tenant";
 import { fmtMoney, fmtDateTime, fmtNum, PAYMENT_LABEL, CASH_GAP_JUSTIFICATION_THRESHOLD } from "@/lib/format";
 import { Badge, Bars, Card, CardHeader, StatCard } from "@/components/ui";
 import { SessionCloser } from "@/components/SessionCloser";
+import { CsvButton } from "@/components/CsvButton";
 
 export const dynamic = "force-dynamic";
 
@@ -84,7 +85,7 @@ export default async function ReportsPage() {
       <div>
         <h1 className="text-xl font-semibold text-white">Rapports & Analytics</h1>
         <p className="mt-0.5 text-sm text-slate-400">
-          CA multi-sites, heures de pointe, marges, rapports de caisse X (intermédiaire) et Z (fin de journée) — exports CSV / Excel / PDF.
+          CA multi-sites, heures de pointe, marges, rapports de caisse X (intermédiaire) et Z (fin de journée) — exports CSV / Excel.
         </p>
       </div>
 
@@ -103,7 +104,17 @@ export default async function ReportsPage() {
           </div>
         </Card>
         <Card>
-          <CardHeader title="Modes de paiement" subtitle="Multimode : espèces, CB, Mobile Money, bon d'achat" />
+          <CardHeader
+            title="Modes de paiement"
+            subtitle="Multimode : espèces, CB, Mobile Money, bon d'achat"
+            action={
+              <CsvButton
+                filename={`modes-paiement-${new Date().toISOString().slice(0, 10)}`}
+                headers={["Mode de paiement", "Nombre", "Montant FCFA"]}
+                rows={byMethod.map((m) => [PAYMENT_LABEL[m.method], m.count, m.amount])}
+              />
+            }
+          />
           <div className="space-y-2 p-4">
             {byMethod.map((m) => (
               <div key={m.method} className="flex items-center justify-between rounded-lg bg-slate-950/60 px-3 py-2 text-sm">
@@ -118,7 +129,17 @@ export default async function ReportsPage() {
 
       <div className="grid gap-4 xl:grid-cols-2">
         <Card>
-          <CardHeader title="Top ventes (30 jours)" subtitle="CA TTC et marge par article" />
+          <CardHeader
+            title="Top ventes (30 jours)"
+            subtitle="CA TTC et marge par article"
+            action={
+              <CsvButton
+                filename={`top-ventes-${new Date().toISOString().slice(0, 10)}`}
+                headers={["Article", "Quantité", "CA TTC FCFA", "Marge FCFA"]}
+                rows={topSales.map((t) => [t.name, t.qty, t.ca, t.margin])}
+              />
+            }
+          />
           <table className="w-full text-sm">
             <tbody className="divide-y divide-slate-800">
               {topSales.map((t, i) => (
@@ -180,6 +201,13 @@ export default async function ReportsPage() {
         <CardHeader
           title="Rapport Z — historique des clôtures"
           subtitle="Contrôle des écarts (comptage physique vs théorique). Un écart >5 000 FCFA exige une justification."
+          action={
+            <CsvButton
+              filename={`rapport-z-${new Date().toISOString().slice(0, 10)}`}
+              headers={["Magasin", "Ouverture", "Clôture", "Tickets", "Théorique FCFA", "Compté FCFA", "Écart FCFA"]}
+              rows={reportRows.map((r) => [r.storeCode, r.openedAt, r.closedAt, r.tickets, r.expected, r.counted, r.gap])}
+            />
+          }
         />
         <div className="max-h-[40vh] overflow-auto">
           <table className="w-full text-sm">

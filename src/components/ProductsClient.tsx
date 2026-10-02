@@ -15,7 +15,7 @@ interface Row extends ProductInput {
 
 const EMPTY: ProductInput = {
   sku: "", barcode: "", name: "", category: "", brand: "",
-  costPrice: 0, vatRate: 0.055, sellingPrice: 0, unit: "UNIT",
+  costPrice: 0, vatRate: 0.18, sellingPrice: 0, unit: "UNIT",
   minStockLevel: 10, supplierId: null, active: true,
 };
 
@@ -163,10 +163,9 @@ export function ProductsClient({ products, suppliers }: { products: Row[]; suppl
                   onChange={(e) => setForm({ ...form, vatRate: parseFloat(e.target.value) })}
                   className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm outline-none focus:border-emerald-500"
                 >
-                  <option value={0.055}>5,5 % (alimentaire)</option>
-                  <option value={0.1}>10 %</option>
-                  <option value={0.2}>20 %</option>
-                  <option value={0}>0 %</option>
+                  <option value={0.18}>18 % (taux normal)</option>
+                  <option value={0.05}>5 % (première nécessité)</option>
+                  <option value={0}>0 % (exonéré)</option>
                 </select>
               </div>
               <NumField label="Prix de vente TTC (FCFA)" value={form.sellingPrice} onChange={(v) => setForm({ ...form, sellingPrice: v })} step={5} />

@@ -5,7 +5,8 @@ import { PosClient } from "@/components/pos/PosClient";
 export const dynamic = "force-dynamic";
 
 export default async function PosPage() {
-  const { tenant } = await resolveTenant();
+  const { tenant, session } = await resolveTenant();
+  const canApproveReturns = ["ADMIN", "SUPER_ADMIN"].includes(session.role);
 
   const products = tenant.products
     .filter((p) => p.active)
@@ -33,6 +34,7 @@ export default async function PosPage() {
       products={products}
       stores={tenant.stores.map((s) => ({ id: s.id, code: s.code, name: s.name, isHub: s.isHub }))}
       stockMap={stockMap}
+      canApproveReturns={canApproveReturns}
     />
   );
 }

@@ -15,7 +15,10 @@ import type {
   TransferItem,
   TransferOrder,
   UUID,
+  User,
+  UserRole,
 } from "./types";
+import { createHash } from "crypto";
 
 // Deterministic RNG so the demo dataset is stable across rebuilds.
 function mulberry32(seed: number) {
@@ -69,36 +72,36 @@ interface ProductSeed {
 
 const PRODUCTS: ProductSeed[] = [
   // Épicerie
-  { sku: "EPI-0001", barcode: "3017620422003", name: "Nutella 750g", category: "Épicerie sucrée", brand: "Ferrero", cost: 2.85, vat: 0.055, price: 4.95, min: 12, dlc: true },
-  { sku: "EPI-0002", barcode: "7622210951965", name: "Biscuits Prince 300g", category: "Épicerie sucrée", brand: "Mondelez", cost: 1.4, vat: 0.055, price: 2.79, min: 15 },
-  { sku: "EPI-0003", barcode: "3175681146014", name: "Riz Basmati 1kg", category: "Épicerie salée", brand: "Uncle Ben's", cost: 2.1, vat: 0.055, price: 3.95, min: 10 },
-  { sku: "EPI-0003", barcode: "3560070976478", name: "Pâtes Penne 500g", category: "Épicerie salée", brand: "Barilla", cost: 0.82, vat: 0.055, price: 1.65, min: 24 },
-  { sku: "EPI-0005", barcode: "3057640257773", name: "Huile d'olive 1L", category: "Épicerie salée", brand: "Puget", cost: 5.4, vat: 0.055, price: 8.9, min: 8 },
-  { sku: "EPI-0006", barcode: "5449000000996", name: "Coca-Cola 1.5L", category: "Boissons", brand: "Coca-Cola", cost: 0.95, vat: 0.055, price: 2.15, min: 36 },
-  { sku: "EPI-0007", barcode: "3052910008210", name: "Eau minérale 6x1.5L", category: "Boissons", brand: "Evian", cost: 1.85, vat: 0.055, price: 3.45, min: 20 },
-  { sku: "EPI-0008", barcode: "3268840001008", name: "Café moulu 250g", category: "Épicerie salée", brand: "Carte Noire", cost: 3.1, vat: 0.055, price: 5.49, min: 10 },
+  { sku: "EPI-0001", barcode: "3017620422003", name: "Nutella 750g", category: "Épicerie sucrée", brand: "Ferrero", cost: 2.85, vat: 0.18, price: 4.95, min: 12, dlc: true },
+  { sku: "EPI-0002", barcode: "7622210951965", name: "Biscuits Prince 300g", category: "Épicerie sucrée", brand: "Mondelez", cost: 1.4, vat: 0.18, price: 2.79, min: 15 },
+  { sku: "EPI-0003", barcode: "3175681146014", name: "Riz Basmati 1kg", category: "Épicerie salée", brand: "Uncle Ben's", cost: 2.1, vat: 0.05, price: 3.95, min: 10 },
+  { sku: "EPI-0003", barcode: "3560070976478", name: "Pâtes Penne 500g", category: "Épicerie salée", brand: "Barilla", cost: 0.82, vat: 0.05, price: 1.65, min: 24 },
+  { sku: "EPI-0005", barcode: "3057640257773", name: "Huile d'olive 1L", category: "Épicerie salée", brand: "Puget", cost: 5.4, vat: 0.18, price: 8.9, min: 8 },
+  { sku: "EPI-0006", barcode: "5449000000996", name: "Coca-Cola 1.5L", category: "Boissons", brand: "Coca-Cola", cost: 0.95, vat: 0.18, price: 2.15, min: 36 },
+  { sku: "EPI-0007", barcode: "3052910008210", name: "Eau minérale 6x1.5L", category: "Boissons", brand: "Evian", cost: 1.85, vat: 0.05, price: 3.45, min: 20 },
+  { sku: "EPI-0008", barcode: "3268840001008", name: "Café moulu 250g", category: "Épicerie salée", brand: "Carte Noire", cost: 3.1, vat: 0.18, price: 5.49, min: 10 },
   // Frais (DLC)
-  { sku: "FRA-0001", barcode: "3245390096265", name: "Lait demi-écrémé 1L", category: "Crèmerie", brand: "Lactel", cost: 0.78, vat: 0.055, price: 1.25, min: 40, dlc: true },
-  { sku: "FRA-0002", barcode: "3263020001001", name: "Beurre doux 250g", category: "Crèmerie", brand: "Président", cost: 1.95, vat: 0.055, price: 3.15, min: 16, dlc: true },
-  { sku: "FRA-0003", barcode: "3270160502000", name: "Yaourts nature x16", category: "Crèmerie", brand: "Danone", cost: 2.2, vat: 0.055, price: 3.85, min: 18, dlc: true },
-  { sku: "FRA-0004", barcode: "3182620000041", name: "Emmental râpé 200g", category: "Crèmerie", brand: "Entremont", cost: 1.6, vat: 0.055, price: 2.95, min: 14, dlc: true },
-  { sku: "FRA-0005", barcode: "3760020505218", name: "Poulet fermier 1.2kg", category: "Boucherie", brand: "Label Rouge", cost: 7.2, vat: 0.055, price: 11.9, min: 8, dlc: true },
-  { sku: "FRA-0006", barcode: "3274560000027", name: "Steak haché 5% x4", category: "Boucherie", brand: "Socopa", cost: 5.1, vat: 0.055, price: 8.5, min: 12, dlc: true },
-  { sku: "FRA-0007", barcode: "3265410003003", name: "Jambon blanc 4 tr.", category: "Charcuterie", brand: "Herta", cost: 1.75, vat: 0.055, price: 3.2, min: 20, dlc: true },
-  { sku: "FRA-0008", barcode: "3254560001005", name: "Baguette tradition", category: "Boulangerie", brand: "Maison", cost: 0.6, vat: 0.055, price: 1.2, min: 30, dlc: true },
+  { sku: "FRA-0001", barcode: "3245390096265", name: "Lait demi-écrémé 1L", category: "Crèmerie", brand: "Lactel", cost: 0.78, vat: 0.05, price: 1.25, min: 40, dlc: true },
+  { sku: "FRA-0002", barcode: "3263020001001", name: "Beurre doux 250g", category: "Crèmerie", brand: "Président", cost: 1.95, vat: 0.05, price: 3.15, min: 16, dlc: true },
+  { sku: "FRA-0003", barcode: "3270160502000", name: "Yaourts nature x16", category: "Crèmerie", brand: "Danone", cost: 2.2, vat: 0.05, price: 3.85, min: 18, dlc: true },
+  { sku: "FRA-0004", barcode: "3182620000041", name: "Emmental râpé 200g", category: "Crèmerie", brand: "Entremont", cost: 1.6, vat: 0.05, price: 2.95, min: 14, dlc: true },
+  { sku: "FRA-0005", barcode: "3760020505218", name: "Poulet fermier 1.2kg", category: "Boucherie", brand: "Label Rouge", cost: 7.2, vat: 0.05, price: 11.9, min: 8, dlc: true },
+  { sku: "FRA-0006", barcode: "3274560000027", name: "Steak haché 5% x4", category: "Boucherie", brand: "Socopa", cost: 5.1, vat: 0.05, price: 8.5, min: 12, dlc: true },
+  { sku: "FRA-0007", barcode: "3265410003003", name: "Jambon blanc 4 tr.", category: "Charcuterie", brand: "Herta", cost: 1.75, vat: 0.05, price: 3.2, min: 20, dlc: true },
+  { sku: "FRA-0008", barcode: "3254560001005", name: "Baguette tradition", category: "Boulangerie", brand: "Maison", cost: 0.6, vat: 0, price: 1.2, min: 30, dlc: true },
   // Fruits & légumes (au kilo)
-  { sku: "FRV-0001", barcode: "2000000000015", name: "Bananes", category: "Fruits & Légumes", brand: "Import Côte d'Ivoire", cost: 1.1, vat: 0.055, price: 2.29, unit: "KG", min: 25, dlc: true },
-  { sku: "FRV-0002", barcode: "2000000000022", name: "Tomates grappe", category: "Fruits & Légumes", brand: "Local", cost: 1.6, vat: 0.055, price: 3.49, unit: "KG", min: 20, dlc: true },
-  { sku: "FRV-0003", barcode: "2000000000039", name: "Pommes Gala", category: "Fruits & Légumes", brand: "Verger de France", cost: 1.05, vat: 0.055, price: 2.49, unit: "KG", min: 25 },
-  { sku: "FRV-0004", barcode: "2000000000046", name: "Carottes", category: "Fruits & Légumes", brand: "Local", cost: 0.7, vat: 0.055, price: 1.65, unit: "KG", min: 20 },
+  { sku: "FRV-0001", barcode: "2000000000015", name: "Bananes", category: "Fruits & Légumes", brand: "Import Côte d'Ivoire", cost: 1.1, vat: 0, price: 2.29, unit: "KG", min: 25, dlc: true },
+  { sku: "FRV-0002", barcode: "2000000000022", name: "Tomates grappe", category: "Fruits & Légumes", brand: "Local", cost: 1.6, vat: 0, price: 3.49, unit: "KG", min: 20, dlc: true },
+  { sku: "FRV-0003", barcode: "2000000000039", name: "Pommes Gala", category: "Fruits & Légumes", brand: "Verger de France", cost: 1.05, vat: 0, price: 2.49, unit: "KG", min: 25 },
+  { sku: "FRV-0004", barcode: "2000000000046", name: "Carottes", category: "Fruits & Légumes", brand: "Local", cost: 0.7, vat: 0, price: 1.65, unit: "KG", min: 20 },
   // Hygiène / Droguerie
-  { sku: "HYG-0001", barcode: "3600542525107", name: "Lessive liquide 2L", category: "Hygiène", brand: "Ariel", cost: 6.2, vat: 0.2, price: 11.9, min: 10 },
-  { sku: "HYG-0002", barcode: "3574661550102", name: "Dentifrice 75ml", category: "Hygiène", brand: "Signal", cost: 1.5, vat: 0.2, price: 2.99, min: 16 },
-  { sku: "HYG-0003", barcode: "4015400000018", name: "Savon liquide 300ml", category: "Hygiène", brand: "Dove", cost: 1.9, vat: 0.2, price: 3.79, min: 12 },
-  { sku: "HYG-0004", barcode: "3560221001001", name: "Papier toilette x12", category: "Droguerie", brand: "Lotus", cost: 4.1, vat: 0.2, price: 7.95, min: 14 },
+  { sku: "HYG-0001", barcode: "3600542525107", name: "Lessive liquide 2L", category: "Hygiène", brand: "Ariel", cost: 6.2, vat: 0.18, price: 11.9, min: 10 },
+  { sku: "HYG-0002", barcode: "3574661550102", name: "Dentifrice 75ml", category: "Hygiène", brand: "Signal", cost: 1.5, vat: 0.18, price: 2.99, min: 16 },
+  { sku: "HYG-0003", barcode: "4015400000018", name: "Savon liquide 300ml", category: "Hygiène", brand: "Dove", cost: 1.9, vat: 0.18, price: 3.79, min: 12 },
+  { sku: "HYG-0004", barcode: "3560221001001", name: "Papier toilette x12", category: "Droguerie", brand: "Lotus", cost: 4.1, vat: 0.18, price: 7.95, min: 14 },
   // Boissons alcoolisées
-  { sku: "BOI-0001", barcode: "3290110001007", name: "Vin rouge Bordeaux 75cl", category: "Alcools", brand: "Château Meyney", cost: 4.8, vat: 0.2, price: 9.5, min: 12 },
-  { sku: "BOI-0002", barcode: "3576731100014", name: "Bière blonde 6x33cl", category: "Alcools", brand: "Kronenbourg", cost: 3.4, vat: 0.2, price: 6.4, min: 18 },
+  { sku: "BOI-0001", barcode: "3290110001007", name: "Vin rouge Bordeaux 75cl", category: "Alcools", brand: "Château Meyney", cost: 4.8, vat: 0.18, price: 9.5, min: 12 },
+  { sku: "BOI-0002", barcode: "3576731100014", name: "Bière blonde 6x33cl", category: "Alcools", brand: "Kronenbourg", cost: 3.4, vat: 0.18, price: 6.4, min: 18 },
 ];
 
 const SUPPLIERS: Supplier[] = [
@@ -107,6 +110,40 @@ const SUPPLIERS: Supplier[] = [
   { id: uid(), code: "F-003", name: "Boissons & Co", email: "ventes@boissonsetco.fr", phone: "+33 1 45 67 89 00", leadTimeDays: 3, paymentTerms: "45 jours" },
   { id: uid(), code: "F-004", name: "Primeur Import", email: "import@primeur-import.com", phone: "+33 5 61 22 33 44", leadTimeDays: 3, paymentTerms: "Comptant" },
 ];
+
+const hashPassword = (password: string, salt: string): string =>
+  createHash("sha256").update(`${salt}:${password}`).digest("hex");
+
+export { hashPassword };
+
+/** Comptes de démo par tenant (identifiants affichés sur l'écran de connexion). */
+export function defaultUsers(slug: string): User[] {
+  const defs: { username: string; password: string; displayName: string; role: UserRole }[] =
+    slug === "ecomarche"
+      ? [
+          { username: "admin", password: "eco2026", displayName: "Gérant EcoMarché", role: "ADMIN" },
+          { username: "caisse", password: "eco-caisse2026", displayName: "Caissier EcoMarché", role: "CASHIER" },
+          { username: "stock", password: "eco-stock2026", displayName: "Stock EcoMarché", role: "STOCK" },
+        ]
+      : [
+          { username: "admin", password: "nova2026", displayName: "A. Dubois (direction)", role: "ADMIN" },
+          { username: "caisse", password: "caisse2026", displayName: "K. Benali (caisse)", role: "CASHIER" },
+          { username: "stock", password: "stock2026", displayName: "M. Leroy (stock)", role: "STOCK" },
+          { username: "logistique", password: "logi2026", displayName: "S. Traoré (logistique)", role: "LOGISTICS" },
+        ];
+  return defs.map((d) => {
+    const salt = createHash("sha256").update(`${slug}:${d.username}`).digest("hex").slice(0, 16);
+    return {
+      id: uid(),
+      username: d.username,
+      passwordHash: hashPassword(d.password, salt),
+      salt,
+      displayName: d.displayName,
+      role: d.role,
+      active: true,
+    };
+  });
+}
 
 function buildStores(): Store[] {
   return [
@@ -669,6 +706,7 @@ function seedHorizon(): Tenant {
     name: "NovaMarket",
     plan: "ENTERPRISE",
     createdAt: daysAgo(400),
+    users: defaultUsers("horizon"),
     stores,
     products,
     batches,
@@ -698,6 +736,7 @@ function seedEco(): Tenant {
     name: "EcoMarché",
     plan: "BUSINESS",
     createdAt: daysAgo(150),
+    users: defaultUsers("ecomarche"),
     stores,
     transferOrders: t.transferOrders.filter((o) => storeIds.has(o.sourceStoreId) && storeIds.has(o.destinationStoreId)),
     purchaseOrders: t.purchaseOrders.filter((o) => storeIds.has(o.storeId)),

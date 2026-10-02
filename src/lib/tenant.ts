@@ -1,26 +1,27 @@
-import { cookies } from "next/headers";
-import { getTenant, listTenants } from "./db";
+import { redirect } from "next/navigation";
+import { getTenant } from "./db";
+import { getSession } from "./session";
+import type { Session } from "./session";
 import type { Tenant } from "./types";
 
-export const TENANT_COOKIE = "sg_tenant";
-export const DEFAULT_TENANT = "horizon";
+/**
+ * Résolution du tenant (PRD §4.1) : dérivée de la session signée (cookie httpOnly),
+ * jamais du client. Toute page/mutation passe par ici — sans session → /login.
+ */
+export async function requireSession(): Promise<Session> {
+  const session = await getSession();
+  if (!session) redirect("/login");
+  return session;
+}
 
 export interface TenantContext {
   tenant: Tenant;
-  tenants: { slug: string; name: string; plan: string }[];
+  session: Session;
 }
 
-/**
- * Résolution du tenant (PRD §4.1) : sous-domaine simulé via cookie applicatif,
- * scoping strict côté serveur. Aucune donnée n'est lue sans tenant résolu.
- */
 export async function resolveTenant(): Promise<TenantContext> {
-  const store = await cookies();
-  const slug = store.get(TENANT_COOKIE)?.value ?? DEFAULT_TENANT;
-  const tenant = (await getTenant(slug)) ?? (await getTenant(DEFAULT_TENANT));
-  const all = await listTenants();
-  return {
-    tenant: tenant!,
-    tenants: all.map((t) => ({ slug: t.slug, name: t.name, plan: t.plan })),
-  };
+  const session = await requireSession();
+  const tenant = await getTenant(session.tenant);
+  if (!tenant) redirect("/login");
+  return { tenant, session };
 }

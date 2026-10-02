@@ -68,11 +68,13 @@ export function PosClient({
   products,
   stores,
   stockMap,
+  canApproveReturns = false,
 }: {
   tenantName: string;
   products: PosProduct[];
   stores: PosStore[];
   stockMap: Record<string, Record<string, number>>;
+  canApproveReturns?: boolean;
 }) {
   const router = useRouter();
   const shops = stores.filter((s) => !s.isHub);
@@ -374,11 +376,15 @@ export function PosClient({
 
         {returnMode ? (
           <div className="rounded-xl border border-red-900 bg-red-950/30 p-4">
-            <p className="text-sm font-semibold text-red-300">Traitement d&apos;un retour (autorisation administrateur requise)</p>
-            <p className="mt-1 text-xs text-red-200/70">N° du ticket d&apos;origine + PIN administrateur (démo : 1234). Le stock est re-crédité via un mouvement RETURN_IN.</p>
+            <p className="text-sm font-semibold text-red-300">Traitement d&apos;un retour {canApproveReturns ? "(compte administrateur)" : "(autorisation administrateur requise)"}</p>
+            <p className="mt-1 text-xs text-red-200/70">
+              {canApproveReturns
+                ? "N° du ticket d'origine — autorisé par votre rôle administrateur. Le stock est re-crédité via un mouvement RETURN_IN."
+                : "N° du ticket d'origine + PIN administrateur (démo : 1234). Le stock est re-crédité via un mouvement RETURN_IN."}
+            </p>
             <div className="mt-3 flex gap-2">
               <input value={returnTicket} onChange={(e) => setReturnTicket(e.target.value)} placeholder="Ex : T-M001-000102" className="w-56 rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm outline-none focus:border-red-500" />
-              <input value={returnPin} onChange={(e) => setReturnPin(e.target.value)} placeholder="PIN admin" type="password" className="w-32 rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm outline-none focus:border-red-500" />
+              {!canApproveReturns && <input value={returnPin} onChange={(e) => setReturnPin(e.target.value)} placeholder="PIN admin" type="password" className="w-32 rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm outline-none focus:border-red-500" />}
               <button onClick={() => void doReturn()} className="rounded-lg bg-red-500 px-4 py-2 text-sm font-semibold text-white hover:bg-red-400">Valider le retour</button>
             </div>
           </div>
@@ -557,7 +563,7 @@ export function PosClient({
             <li>• Lecteur 1D/2D USB/Bluetooth : scan direct dans le champ recherche.</li>
             <li>• Paiements : Espèces, CB, Mobile Money, Bon d&apos;achat + fractionné.</li>
             <li>• Ticket thermique ESC/POS : bouton Imprimer du ticket.</li>
-            <li>• Retours sous PIN administrateur (mode retour).</li>
+            <li>• Retours autorisés par rôle administrateur ou PIN (mode retour).</li>
           </ul>
         </div>
       </div>

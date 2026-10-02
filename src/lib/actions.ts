@@ -1,8 +1,11 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { cookies } from "next/headers";
 import { getTenant, newId, mutateTenant } from "./db";
-import { resolveTenant } from "./tenant";
+import { requireSession } from "./tenant";
+import { getSession, SESSION_COOKIE, sessionCookieOptions, encodeSession } from "./session";
+import { hashPassword } from "./seed";
 import { replenishmentSuggestions, salesWeight } from "./stock";
 import type {
   AuditEntry,
@@ -15,9 +18,9 @@ import type {
   TransferOrder,
 } from "./types";
 
-const ADMIN_PIN = "1234"; // démo : autorisation administrateur pour retours/remises
+const ADMIN_PIN = "1234"; // démo : second facteur pour les retours des caissier·ères
 
-type Result = { ok: true } | { ok: false; error: string };
+type Result = { ok: true } | { ok: false, error: string };
 
 function fail(error: string): Result {
   return { ok: false, error };
@@ -30,10 +33,33 @@ function revalidateAll() {
 }
 
 async function withTenant<T>(fn: (slug: string) => Promise<T>): Promise<T> {
-  const { tenant } = await resolveTenant();
-  const result = await fn(tenant.slug);
+  const session = await requireSession();
+  const result = await fn(session.tenant);
   revalidateAll();
   return result;
+}
+
+// ─── Authentification ───────────────────────────────────────────────────────
+
+export async function login(tenantSlug: string, username: string, password: string): Promise<Result> {
+  const t = await getTenant(tenantSlug);
+  if (!t) return fail("Enseigne inconnue");
+  const user = t.users?.find((u) => u.username === username && u.active);
+  if (!user || hashPassword(password, user.salt) !== user.passwordHash) {
+    return fail("Identifiants incorrects");
+  }
+  const store = await cookies();
+  store.set(
+    SESSION_COOKIE,
+    encodeSession({ tenant: t.slug, username: user.username, displayName: user.displayName, role: user.role }),
+    sessionCookieOptions,
+  );
+  return { ok: true };
+}
+
+export async function logout(): Promise<void> {
+  const store = await cookies();
+  store.delete(SESSION_COOKIE);
 }
 
 function auditOf(action: string, entity: string, entityId: string, userId: string, detail: string): AuditEntry {
@@ -158,7 +184,9 @@ export async function createSale(payload: SalePayload): Promise<Result & { ticke
 }
 
 export async function createReturn(origTicket: string, storeId: string, pin: string): Promise<Result> {
-  if (pin !== ADMIN_PIN) return withTenant(async () => fail("PIN administrateur incorrect"));
+  const session = await getSession();
+  const adminBypass = !!session && ["ADMIN", "SUPER_ADMIN"].includes(session.role);
+  if (!adminBypass && pin !== ADMIN_PIN) return fail("PIN administrateur incorrect");
   return withTenant(async (slug) =>
     mutateTenant(slug, (t) => {
       const orig = t.sales.find((s) => s.ticketNumber === origTicket && s.storeId === storeId && s.status === "COMPLETED");
@@ -196,7 +224,9 @@ export async function createReturn(origTicket: string, storeId: string, pin: str
           createdAt: now,
         })),
       );
-      t.auditLog.unshift(auditOf("RETURN_VALIDATE", "sale", origTicket, "store.manager", `Retour autorisé du ticket ${origTicket}`));
+      t.auditLog.unshift(
+        auditOf("RETURN_VALIDATE", "sale", origTicket, session?.username ?? "pos", `Retour autorisé du ticket ${origTicket}${adminBypass ? " (administrateur)" : " (PIN administrateur)"}`),
+      );
       return { ok: true };
     }),
   );

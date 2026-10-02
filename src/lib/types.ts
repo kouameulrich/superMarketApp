@@ -10,6 +10,7 @@ export interface Tenant {
   name: string;
   plan: "STARTER" | "BUSINESS" | "ENTERPRISE";
   createdAt: string;
+  users: User[];
   stores: Store[];
   products: Product[];
   batches: Batch[];
@@ -20,6 +21,18 @@ export interface Tenant {
   sales: Sale[];
   cashSessions: CashSession[];
   auditLog: AuditEntry[];
+}
+
+export type UserRole = "CASHIER" | "STOCK" | "LOGISTICS" | "ADMIN" | "SUPER_ADMIN";
+
+export interface User {
+  id: UUID;
+  username: string;
+  passwordHash: string; // sha256(salt:password)
+  salt: string;
+  displayName: string;
+  role: UserRole;
+  active: boolean;
 }
 
 export interface Store {
@@ -41,7 +54,7 @@ export interface Product {
   category: string;
   brand: string;
   costPrice: number; // HT
-  vatRate: number; // 0.055 | 0.1 | 0.2
+  vatRate: number; // 0.18 | 0.05 | 0 (grille zone FCFA)
   sellingPrice: number; // TTC
   unit: ProductUnit;
   minStockLevel: number;

@@ -1,6 +1,6 @@
 import { promises as fs } from "fs";
 import path from "path";
-import { buildSeedDatabase } from "./seed";
+import { buildSeedDatabase, defaultUsers } from "./seed";
 import type { Database, Tenant, UUID } from "./types";
 
 /**
@@ -22,6 +22,15 @@ async function load(): Promise<Database> {
     let db: Database;
     try {
       db = JSON.parse(await fs.readFile(DATA_FILE, "utf8")) as Database;
+      // Migration douce : données antérieures à l'authentification → comptes de démo
+      let migrated = false;
+      for (const tenant of Object.values(db.tenants)) {
+        if (!tenant.users?.length) {
+          tenant.users = defaultUsers(tenant.slug);
+          migrated = true;
+        }
+      }
+      if (migrated) await persist(db);
     } catch {
       db = buildSeedDatabase();
       await persist(db);

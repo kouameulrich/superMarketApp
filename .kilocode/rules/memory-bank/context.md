@@ -8,6 +8,9 @@ Implémentation couvrant la Phase 1 (MVP POS offline) + Phase 2 (multi-tenant, t
 
 ## Recently Completed
 
+- [x] Authentification & tenant sécurisés (2026-10-02) : comptes utilisateurs par tenant (sha256 salted), /login (choix enseigne + identifiants de démo affichés), session HMAC signée httpOnly 12 h, tenant+rôle dérivés de la session (cookie sg_tenant supprimé), route group (app) protégé, logout, retours POS par rôle (PIN requis seulement pour les non-admins)
+- [x] Exports CSV (2026-10-02) : rapport Z, top ventes, modes de paiement (CsvButton, séparateur « ; » + BOM UTF-8 pour Excel FR)
+- [x] Harmonisation TVA zone FCFA (2026-10-02) : grille 18 % normal / 5 % première nécessité / 0 % exonéré (seed, formule produit, page produits)
 - [x] Migration monétaire EUR → FCFA (XOF) : `fmtMoney` affiche en FCFA sans décimales (format.ts), données seed converties à la parité fixe 1 € = 655,957 FCFA arrondie au multiple de 5 (prix/coefficients produits), fond de caisse 100 000 FCFA, coupures POS 500/1 000/2 000/5 000/10 000 FCFA, seuil d'écart de caisse 5 000 FCFA (constante partagée `CASH_GAP_JUSTIFICATION_THRESHOLD`), champs prix produit en pas de 5 FCFA
 - [x] Modèle de données complet calqué sur le DDL PRD §5 (types.ts)
 - [x] Persistance par tenant (db.ts) simulant schema-per-tenant PostgreSQL, avec single-flight load + écriture atomique
@@ -23,11 +26,12 @@ Implémentation couvrant la Phase 1 (MVP POS offline) + Phase 2 (multi-tenant, t
 
 ## Current Focus
 
-Aucun chantier en cours. Évolutions V2.0 (PDA, IA, fidélité) non entamées.
+Ordre d'exécution : auth ✓ → exports CSV ✓ → PostgreSQL (bloqué : DB_URL/DB_TOKEN non provisionnés) → TVA ✓. Prochaines étapes : vraie base PostgreSQL (revenir à la recipe add-database dès credentials), tests automatisés persistants, puis V2.0 (PDA, IA réappro, fidélité, dynamic pricing).
 
 ## Session History
 
 | Date | Changes |
 |------|---------|
-| 2026-10-02 | Migration de la devise EUR → FCFA sur toute l'app (formatage, seed, POS, caisse, rapports) |
+| 2026-10-02 (2) | Auth par session signée + rôles, exports CSV rapports, grille TVA FCFA 18/5/0 %, migration douce users sur données existantes |
+| 2026-10-02 (1) | Migration de la devise EUR → FCFA sur toute l'app (formatage, seed, POS, caisse, rapports) |
 | 2026-10-01 | Implémentation complète SuperGestion V1.0 d'après le PRD (POS offline-first, stocks/DLC, transferts, achats, analytics, multi-tenant) |
