@@ -18,7 +18,7 @@ type SqlModule = typeof import("mssql");
 
 let poolPromise: Promise<SqlPool> | null = null;
 
-/** Accepte `mssql://user:pass@host:1433/db` ou une chaîne ADO `Server=…;Database=…;User Id=…;Password=…`. */
+/** Accepte `mssql://user:pass@host:1433/db` ou une chaîne ADO `Server=…\INSTANCE;Database=…;User Id=…;Password=…`. */
 export function parseConnectionString(cs: string): import("mssql").config {
   if (/^(mssql|sqlserver):\/\//i.test(cs)) {
     return cs as unknown as import("mssql").config;
@@ -28,15 +28,20 @@ export function parseConnectionString(cs: string): import("mssql").config {
     const idx = part.indexOf("=");
     if (idx > 0) kv[part.slice(0, idx).trim().toLowerCase()] = part.slice(idx + 1).trim();
   }
-  const rawServer = kv["server"] ?? kv["data source"] ?? kv["addr"] ?? kv["address"] ?? "localhost";
-  const [host, portPart] = rawServer.split(",");
+  const fullServer = kv["server"] ?? kv["data source"] ?? kv["addr"] ?? kv["address"] ?? "localhost";
+  const [hostPort, portFromComma] = fullServer.split(",");
+  // Instance nommée : Server=LI-ERP-004\SQL22I3 → résolution du port via SQL Browser (UDP 1434)
+  const [host, serverInstance] = hostPort.split("\\");
+  const instanceName = serverInstance ?? kv["instance name"] ?? kv["instance"];
+  const port = instanceName || !portFromComma ? undefined : Number(portFromComma);
   return {
     server: host,
-    port: portPart ? Number(portPart) : 1433,
+    port,
     database: kv["database"] ?? kv["initial catalog"] ?? "supergestion",
     user: kv["user id"] ?? kv["uid"] ?? kv["user"],
     password: kv["password"] ?? kv["pwd"],
     options: {
+      ...(instanceName ? { instanceName } : {}),
       encrypt: kv["encrypt"] !== "false",
       trustServerCertificate: kv["trustservercertificate"] !== "false",
     },

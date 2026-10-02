@@ -13,7 +13,7 @@
 | node:crypto  | -       | sessions HMAC-SHA256 + hash mots de passe |
 | —            | —       | Repli : store JSON par tenant (`src/lib/db.ts`) |
 
-⚠ Persistance **SQL Server** activée quand `MSSQL_CONNECTION_STRING` est défini (document JSON par tenant dans `dbo.sg_tenants`, upsert read-modify-write). Repli automatique sur le store JSON local (`.data/supergestion.json`) sinon — mode actuel du sandbox : aucune instance SQL Server ni Docker disponibles. Chaîne acceptée : ADO (`Server=…;Database=…;User Id=…;Password=…`) ou URL `mssql://user:pass@host:1433/db`. Types : `@types/mssql`.
+⚠ Persistance **SQL Server** activée quand `MSSQL_CONNECTION_STRING` est défini (document JSON par tenant dans `dbo.sg_tenants`, upsert read-modify-write). Repli automatique sur le store JSON local (`.data/supergestion.json`) sinon. Chaîne acceptée : ADO (`Server=…;Database=…;User Id=…;Password=…`) ou URL `mssql://user:pass@host:1433/db`. **Instance nommée supportée** : `Server=LI-ERP-004\SQL22I3` → `options.instanceName`, résolution du port via SQL Browser (UDP 1434) — sinon port fixe `Server=hôte,port`. Instance cible utilisateur : `LI-ERP-004\SQL22I3` (SQL Server 2022, hors sandbox). Validation live : `bun run sql:check` (scripts/sql-check.ts) depuis le réseau de l'instance ; `.env.local.example` contient les gabarits. Types : `@types/mssql`.
 
 ## Commands
 
