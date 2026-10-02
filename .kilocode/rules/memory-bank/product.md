@@ -23,6 +23,9 @@ Création OT (manuel/Brush PULL/PUSH), stepper workflow DRAFT→…→RECEIVED, 
 ### Achats (/suppliers)
 Annuaire, suggestions automatiques (hub sous seuil), PO DRAFT→SENT→(PARTIAL)→RECEIVED, réception avec rapprochement BC/BL, mouvements SUPPLIER_IN auto.
 
+### Administrateur (/users)
+Comptes du tenant : création (identifiant normalisé, mot de passe ≥ 8, rôle), modification (nom, rôle, mot de passe optionnel), désactivation/réactivation, changement de mot de passe personnel. Session vivante : rôle relu en base à chaque résolution — désactivation/comptes effectifs immédiatement.
+
 ### Admin (/ , /reports)
 KPI temps réel, CA 14 j, alertes ruptures & DLC, rapports X (session ouverte) et Z (écarts comptage), top ventes 30 j, heures de pointe, modes de paiement.
 
