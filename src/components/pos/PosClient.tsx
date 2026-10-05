@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from
 import { useRouter } from "next/navigation";
 import { createSale, createReturn, type SalePayload } from "@/lib/actions";
 import { fmtMoney, fmtDateTime, fmtNum, PAYMENT_LABEL } from "@/lib/format";
+import { newClientId } from "@/lib/id";
 
 // ─── Types locaux ──────────────────────────────────────────────────────────
 
@@ -224,7 +225,7 @@ export function PosClient({
     if (!lines.length) return;
     const all: Record<string, ParkedCart[]> = JSON.parse(localStorage.getItem(PARK_KEY) ?? "{}");
     const list = all[storeId] ?? [];
-    list.push({ id: crypto.randomUUID(), items: lines, createdAt: new Date().toISOString() });
+    list.push({ id: newClientId(), items: lines, createdAt: new Date().toISOString() });
     all[storeId] = list;
     localStorage.setItem(PARK_KEY, JSON.stringify(all));
     setParked(list);
@@ -269,7 +270,7 @@ export function PosClient({
     const paidNow = round2(effectivePayments.reduce((a, p) => a + p.amount, 0));
     if (totals.total <= 0 || paidNow + 0.001 < totals.total) return;
     const changeNow = round2(Math.max(0, paidNow - totals.total));
-    const saleId = crypto.randomUUID();
+    const saleId = newClientId();
     const payload: SalePayload = {
       id: saleId,
       storeId,
