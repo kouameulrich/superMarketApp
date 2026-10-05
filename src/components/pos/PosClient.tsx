@@ -280,6 +280,7 @@ export function PosClient({
     };
     let finalTicket = `#${saleId.slice(0, 8).toUpperCase()}`;
     let synced = false;
+    let serverReject: string | null = null;
     try {
       if (online) {
         const res = await createSale(payload);
@@ -287,10 +288,16 @@ export function PosClient({
           finalTicket = res.ticketNumber;
           synced = true;
         } else if (!res.ok) {
-          throw new Error(res.error);
+          serverReject = res.error ?? "Vente refusée";
+          throw new Error(serverReject);
         }
       }
     } catch {
+      if (serverReject) {
+        // rejet serveur avéré : ne pas mettre en file locale
+        setToast({ kind: "err", text: serverReject });
+        return;
+      }
       const queue: PendingSale[] = JSON.parse(localStorage.getItem(QUEUE_KEY) ?? "[]");
       queue.push({
         id: saleId,
