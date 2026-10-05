@@ -26,4 +26,4 @@ Caissier·ère (POS), Gestionnaire de stock (PDA), Responsable achats/logistique
 - Next.js 16 + React 19 + Tailwind 4, TypeScript strict
 - Package manager **Bun** ; nunca `next dev` manuellement (le sandbox s'en charge)
 - Persistance : **SQL Server** (`MSSQL_CONNECTION_STRING`, document JSON par tenant dans `dbo.sg_tenants`) avec repli automatique store JSON par tenant (`.data/supergestion.json`, gitignored) quand non configurée — l'instance SQL Server n'est pas disponible dans le sandbox, le mode live reste à valider avec une vraie chaîne de connexion
-- Langue de l'UI : français ; devise FCFA (parité seed 1 € = 655,957 FCFA, arrondie au multiple de 5)
+- Langue de l'UI : français ; devise FCFA (parité seed 1 € = 655,957 FCFA, arrondie au multiple de 5) ; fiscalité ivoirienne : TVA 18 % (CGI CI art. 375) / 0 % exonéré (art. 377 tableau A)
