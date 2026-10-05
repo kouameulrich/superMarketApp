@@ -15,7 +15,7 @@ const NAV: Array<{ section: string; items: Array<{ href: string; label: string; 
   },
   {
     section: "Caisse",
-    items: [{ href: "/pos", label: "Point de vente (POS)", icon: "M3 9l2-5h14l2 5M4 9h16v11H4zM9 14h6" }],
+    items: [{ href: "/pos", roles: ["CASHIER", "LOGISTICS", "ADMIN", "SUPER_ADMIN"], label: "Point de vente (POS)", icon: "M3 9l2-5h14l2 5M4 9h16v11H4zM9 14h6" }],
   },
   {
     section: "Référentiel & Stock",

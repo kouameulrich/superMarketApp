@@ -39,6 +39,7 @@ function revalidateAll() {
 
 const ROLES = {
   any: undefined as UserRole[] | undefined,
+  pos: ["CASHIER", "LOGISTICS", "ADMIN", "SUPER_ADMIN"] as UserRole[],
   stock: ["STOCK", "LOGISTICS", "ADMIN", "SUPER_ADMIN"] as UserRole[],
   logistics: ["LOGISTICS", "ADMIN", "SUPER_ADMIN"] as UserRole[],
   admin: ["ADMIN", "SUPER_ADMIN"] as UserRole[],
@@ -99,7 +100,7 @@ export interface SalePayload {
 }
 
 export async function createSale(payload: SalePayload): Promise<Result & { ticketNumber?: string }> {
-  return withTenant(ROLES.any, (slug) =>
+  return withTenant(ROLES.pos, (slug) =>
     mutateTenant(slug, (t): Result & { ticketNumber?: string } => {
       if (t.sales.some((s) => s.id === payload.id)) {
         const existing = t.sales.find((s) => s.id === payload.id)!;
@@ -204,7 +205,7 @@ export async function createReturn(origTicket: string, storeId: string, pin: str
   const session = await getSession();
   const adminBypass = !!session && ["ADMIN", "SUPER_ADMIN"].includes(session.role);
   if (!adminBypass && pin !== ADMIN_PIN) return fail("PIN administrateur incorrect");
-  return withTenant(ROLES.any, async (slug) =>
+  return withTenant(ROLES.pos, async (slug) =>
     mutateTenant(slug, (t) => {
       const orig = t.sales.find((s) => s.ticketNumber === origTicket && s.storeId === storeId && s.status === "COMPLETED");
       if (!orig) return fail("Ticket introuvable ou déjà remboursé");
@@ -252,7 +253,7 @@ export async function createReturn(origTicket: string, storeId: string, pin: str
 // ─── Clôtures de caisse ─────────────────────────────────────────────────────
 
 export async function closeCashSession(storeId: string, countedCash: number): Promise<Result> {
-  return withTenant(ROLES.any, async (slug) =>
+  return withTenant(ROLES.pos, async (slug) =>
     mutateTenant(slug, (t) => {
       const session = t.cashSessions.find((c) => c.storeId === storeId && c.status === "OPEN");
       if (!session) return fail("Aucune session ouverte pour ce magasin");

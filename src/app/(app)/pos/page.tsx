@@ -1,4 +1,4 @@
-import { resolveTenant } from "@/lib/tenant";
+import { resolveTenant, guardRoles } from "@/lib/tenant";
 import { stockOf } from "@/lib/stock";
 import { PosClient } from "@/components/pos/PosClient";
 
@@ -6,6 +6,8 @@ export const dynamic = "force-dynamic";
 
 export default async function PosPage() {
   const { tenant, session } = await resolveTenant();
+  // Le gestionnaire de stock n'a pas accès à la caisse
+  guardRoles(session.role, ["CASHIER", "LOGISTICS", "ADMIN", "SUPER_ADMIN"]);
   const canApproveReturns = ["ADMIN", "SUPER_ADMIN"].includes(session.role);
 
   const products = tenant.products
