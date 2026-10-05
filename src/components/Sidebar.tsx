@@ -9,14 +9,15 @@ const NAV: Array<{ section: string; items: Array<{ href: string; label: string; 
   {
     section: "Pilotage",
     items: [
-      { href: "/", roles: ["LOGISTICS", "ADMIN", "SUPER_ADMIN"], label: "Tableau de bord", icon: "M3 12l9-9 9 9M5 10v10h14V10" },
+      { href: "/", roles: ["ADMIN", "SUPER_ADMIN"], label: "Tableau de bord", icon: "M3 12l9-9 9 9M5 10v10h14V10" },
       { href: "/stock-board", roles: ["STOCK", "LOGISTICS", "ADMIN", "SUPER_ADMIN"], label: "Tableau de bord Stock", icon: "M3 12l9-9 9 9M5 10v10h14V10" },
+      { href: "/logistics-board", roles: ["LOGISTICS", "ADMIN", "SUPER_ADMIN"], label: "Tableau de bord Logistique", icon: "M3 7h11m0 0l-3-3m3 3l-3 3M20 17H9m0 0l3 3m-3-3l3-3" },
       { href: "/reports", roles: ["ADMIN", "SUPER_ADMIN"], label: "Rapports & Analytics", icon: "M4 20V10m6 10V4m6 16v-7" },
     ],
   },
   {
     section: "Caisse",
-    items: [{ href: "/pos", roles: ["CASHIER", "LOGISTICS", "ADMIN", "SUPER_ADMIN"], label: "Point de vente (POS)", icon: "M3 9l2-5h14l2 5M4 9h16v11H4zM9 14h6" }],
+    items: [{ href: "/pos", roles: ["CASHIER", "ADMIN", "SUPER_ADMIN"], label: "Point de vente (POS)", icon: "M3 9l2-5h14l2 5M4 9h16v11H4zM9 14h6" }],
   },
   {
     section: "Référentiel & Stock",
