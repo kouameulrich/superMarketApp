@@ -9,7 +9,8 @@ const NAV: Array<{ section: string; items: Array<{ href: string; label: string; 
   {
     section: "Pilotage",
     items: [
-      { href: "/", roles: ["STOCK", "LOGISTICS", "ADMIN", "SUPER_ADMIN"], label: "Tableau de bord", icon: "M3 12l9-9 9 9M5 10v10h14V10" },
+      { href: "/", roles: ["LOGISTICS", "ADMIN", "SUPER_ADMIN"], label: "Tableau de bord", icon: "M3 12l9-9 9 9M5 10v10h14V10" },
+      { href: "/stock-board", roles: ["STOCK", "LOGISTICS", "ADMIN", "SUPER_ADMIN"], label: "Tableau de bord Stock", icon: "M3 12l9-9 9 9M5 10v10h14V10" },
       { href: "/reports", roles: ["ADMIN", "SUPER_ADMIN"], label: "Rapports & Analytics", icon: "M4 20V10m6 10V4m6 16v-7" },
     ],
   },

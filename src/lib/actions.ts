@@ -71,7 +71,7 @@ export async function login(tenantSlug: string, username: string, password: stri
     sessionCookieOptions,
   );
   // Atterrissage selon le rôle : les caissier·ères vont au POS, les autres au tableau de bord
-  redirect(user.role === "CASHIER" ? "/pos" : "/");
+  redirect(user.role === "CASHIER" ? "/pos" : user.role === "STOCK" ? "/stock-board" : "/");
 }
 
 export async function logout(): Promise<void> {

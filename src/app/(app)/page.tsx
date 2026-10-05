@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
   const { tenant, session } = await resolveTenant();
-  guardRoles(session.role, ["STOCK", "LOGISTICS", "ADMIN", "SUPER_ADMIN"]);
+  guardRoles(session.role, ["LOGISTICS", "ADMIN", "SUPER_ADMIN"]);
 
   const today = new Date().toISOString().slice(0, 10);
   const salesToday = tenant.sales.filter((s) => s.createdAt.slice(0, 10) === today);
