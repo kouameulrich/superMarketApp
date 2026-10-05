@@ -39,7 +39,7 @@ src/components/ (ui.tsx, Sidebar, LoginForm, CsvButton, PosClient, ProductsClien
 
 ## Technical Constraints
 
-- UI/UX en français, devise FCFA (grille TVA 18/5/0 % zone UEMOA), format fr-FR partout via `Intl`.
+- UI/UX en français, devise FCFA, fiscalité **législation ivoirienne** : TVA 18 % (taux normal, CGI CI art. 375) / 0 % exonéré (art. 377 tableau A — produits de 1ʳᵉ nécessité non transformés, produits agricoles locaux, lait, pain) — à la vente TTC la TVA extraite = TTC × t / (1 + t) ; pas de taux réduit général en CI (le 9 % ne concerne que les services financiers) ; le droit d'accise sur alcools/tabacs est hors périmètre. Format fr-FR partout via `Intl`.
 - Toutes les pages : `export const dynamic = "force-dynamic"` (layout consomme `cookies()`).
 - écrivures serveur uniquement via Server Actions (`src/lib/actions.ts`) ; validation + recalcul des totaux côté serveur.
 - Auth : session signée HMAC (`sg_session`, secret `SG_SECRET` à définir en prod), tenant+rôle dérivés de la session, jamais du client. Retours POS : bypass PIN pour ADMIN/SUPER_ADMIN, sinon PIN démo `1234`.

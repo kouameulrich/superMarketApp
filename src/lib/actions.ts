@@ -290,6 +290,9 @@ export interface ProductInput {
 export async function saveProduct(input: ProductInput): Promise<Result> {
   return withTenant(ROLES.admin, async (slug) =>
     mutateTenant(slug, (t) => {
+      // Grille TVA ivoirienne : 18 % (taux normal, CGI art. 375) ou 0 % (exonéré, art. 377 tableau A)
+      const vat = Math.round((input.vatRate ?? 0.18) * 10000) / 10000;
+      if (![0, 0.18].includes(vat)) return fail("TVA hors grille ivoirienne (18 % ou 0 %)");
       if (input.id) {
         const p = t.products.find((x) => x.id === input.id);
         if (!p) return fail("Produit introuvable");

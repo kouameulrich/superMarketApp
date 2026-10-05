@@ -46,9 +46,9 @@ export default async function ProductsPage() {
       <Card>
         <CardHeader title="Grille TVA et fiscalité" subtitle="Règles appliquées aux tickets de caisse (PRD §3.1, §6)" />
         <div className="flex flex-wrap gap-2 p-4 text-xs">
-          <Badge tone="blue">18 % — taux normal (boissons, épicerie, hygiène, alcools)</Badge>
-          <Badge tone="violet">5 % — produits de première nécessité (alimentaire)</Badge>
-          <Badge tone="neutral">0 % — exonérés (pain, fruits & légumes)</Badge>
+          <Badge tone="blue">18 % — taux normal (CGI ivoirien art. 375)</Badge>
+          <Badge tone="violet">0 % — exonéré (art. 377, tableau A : riz, lait, pain, produits agricoles non transformés)</Badge>
+          <Badge tone="neutral">Fiscalité : Côte d&apos;Ivoire — FCFA</Badge>
           <Badge tone="amber">Inaltérabilité des données de caisse garantie par journal horodaté</Badge>
         </div>
       </Card>

@@ -163,9 +163,8 @@ export function ProductsClient({ products, suppliers }: { products: Row[]; suppl
                   onChange={(e) => setForm({ ...form, vatRate: parseFloat(e.target.value) })}
                   className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm outline-none focus:border-emerald-500"
                 >
-                  <option value={0.18}>18 % (taux normal)</option>
-                  <option value={0.05}>5 % (première nécessité)</option>
-                  <option value={0}>0 % (exonéré)</option>
+                  <option value={0.18}>18 % — taux normal (CGI CI art. 375)</option>
+                  <option value={0}>0 % — exonéré (art. 377, tableau A : 1ʳᵉ nécessité non transformé)</option>
                 </select>
               </div>
               <NumField label="Prix de vente TTC (FCFA)" value={form.sellingPrice} onChange={(v) => setForm({ ...form, sellingPrice: v })} step={5} />
