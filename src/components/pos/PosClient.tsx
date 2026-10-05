@@ -256,17 +256,26 @@ export function PosClient({
   };
 
   // ── Encaissement ─────────────────────────────────────────────────────────
+  const typedAmount = payAmount ? parseFloat(payAmount.replace(",", ".")) || 0 : 0;
   const canEncaisser = totals.total > 0 && paid + 0.001 >= totals.total;
+  // Valider accepte le montant saisi : ajout implicite au règlement (espèces = montant complet, change calculé ; autres modes = plafonné au restant)
+  const canValidate = totals.total > 0 && (canEncaisser || (remaining > 0 && typedAmount >= remaining - 0.001));
 
   const encaisser = async () => {
-    if (!canEncaisser) return;
+    if (!canValidate) return;
+    const implicit = remaining > 0 && typedAmount > 0 ? (payMethod === "CASH" ? round2(typedAmount) : round2(Math.min(typedAmount, remaining))) : 0;
+    if (implicit > 0) setPayments((prev) => [...prev, { method: payMethod, amount: implicit }]);
+    const effectivePayments = implicit > 0 ? [...payments, { method: payMethod, amount: implicit }] : payments;
+    const paidNow = round2(effectivePayments.reduce((a, p) => a + p.amount, 0));
+    if (totals.total <= 0 || paidNow + 0.001 < totals.total) return;
+    const changeNow = round2(Math.max(0, paidNow - totals.total));
     const saleId = crypto.randomUUID();
     const payload: SalePayload = {
       id: saleId,
       storeId,
       cashier,
       items: lines.map((l) => ({ productId: l.productId, quantity: l.quantity, discount: l.discount })),
-      payments: payments.length ? payments : [{ method: "CARD", amount: totals.total }],
+      payments: effectivePayments.length ? effectivePayments : [{ method: "CARD", amount: totals.total }],
       offline: !online,
     };
     let finalTicket = `#${saleId.slice(0, 8).toUpperCase()}`;
@@ -305,12 +314,13 @@ export function PosClient({
       }
       return copy;
     });
-    setReceipt({ lines, payments: payload.payments, totals, ticket: finalTicket, synced, change });
-    setLines([]);
-    setPayments([]);
-    setShowPay(false);
-    setReturnMode(false);
-    searchRef.current?.focus();
+    setReceipt({ lines, payments: payload.payments, totals, ticket: finalTicket, synced, change: changeNow });
+      setLines([]);
+      setPayments([]);
+      setPayAmount("");
+      setShowPay(false);
+      setReturnMode(false);
+      searchRef.current?.focus();
   };
 
   const doReturn = async () => {
@@ -632,10 +642,10 @@ export function PosClient({
 
             <button
               onClick={() => void encaisser()}
-              disabled={!canEncaisser}
+              disabled={!canValidate}
               className="mt-4 w-full rounded-lg bg-emerald-500 py-3 text-base font-bold text-slate-950 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-40"
             >
-              Valider {canEncaisser ? `— rendre ${fmtMoney(change)}` : `— manque ${fmtMoney(remaining)}`}
+              Valider {canEncaisser ? `— rendre ${fmtMoney(change)}` : canValidate ? (payMethod === "CASH" && typedAmount > totals.total ? `— rendre ${fmtMoney(typedAmount - totals.total)}` : "— régler le solde") : `— manque ${fmtMoney(remaining)}`}
             </button>
             <p className="mt-2 text-center text-[10px] text-slate-500">
               Cure inaltérable : chaque ticket est horodaté et journalisé (conformité fiscale PRD §6).
